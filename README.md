@@ -1,7 +1,6 @@
 # QuantumComputer
-Quantum Computer Simulator
 
-According to standard requirements for a working quantum computer, it will be:
+According to standard requirements for a working quantum computer, this quantum computer simulator will be:
 
 * capable of initializing any number of qubits to arbitrary values
 * consisting of universal unitary quantum gate set
