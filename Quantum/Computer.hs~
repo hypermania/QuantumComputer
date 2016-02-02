@@ -1,0 +1,12 @@
+{-|
+Module      : Quantum.
+Description : Defines ring, field classes and relevant implementation
+Copyright   : Siyang Ling, 2015
+License     : GPL-3
+Maintainer  : hypermania@uchicago.edu
+Stability   : experimental
+Portability : Unknown
+
+Defines the Ring, Field class, implement rings of integer mod p. Everything are assumed to be commutative.
+-}
+module Calculator.Ring where
