@@ -17,6 +17,7 @@ import Data.Complex
 import Control.Monad
 import Control.Monad.Random
 import Control.Monad.State
+import Control.Applicative
 
 ------------------------------------------------------------
 -- Basic vector operations
@@ -89,19 +90,81 @@ superposedIntV bits = Vec.replicate (2^bits) (comp:+0)
 -------------------------------------------------------
 -- Basic operator operations
 
+-- | Represent a list of column vectors
 type QOperator = Vector QState
-type QHermitian = Vector (Double, ONB)
+
+-- | Represent a list of (eigenvalue,eigenstate) pair
+type SpectralDecom = Vector (Double, ONB)
+
+-- | Let an operator act on a state
+actOn :: QOperator -> QState -> QState
+actOn op psi = Vec.foldr1 addV $ Vec.zipWith (flip scalV) op psi
+
+addOp :: QOperator -> QOperator -> QOperator
+addOp = Vec.zipWith addV
+
+scalOp :: Complex Double -> QOperator -> QOperator
+scalOp k = (<$>) (k `scalV`) 
 
 multOp :: QOperator -> QOperator -> QOperator
-multOp = undefined
+multOp op = Vec.map (op `actOn`)
 
-actOn :: QOperator -> QState -> QState
-actOn = undefined
+-- | Transpose of an operator
+transposeOp :: QOperator -> QOperator
+transposeOp op = Vec.map (\n -> Vec.map (!n) op) $ Vec.enumFromTo 0 (rows-1)
+  where rows = Vec.length $ op!0
+
+-- | Complex conjugate of an operator
+conjugateOp :: QOperator -> QOperator
+conjugateOp = (fmap . fmap) conjugate
+
+-- | The hermitian conjugate
+hConjugateOp :: QOperator -> QOperator
+hConjugateOp = transposeOp . conjugateOp
+
+commutatorOp :: QOperator -> QOperator -> QOperator
+commutatorOp op1 op2 = (op1 `multOp` op2) `addOp` (scalOp (-1) (op2 `multOp` op1))
+
+isHermitian :: QOperator -> Bool
+isHermitian op = hConjugateOp op == op
+
+isUnitary :: QOperator -> Bool
+isUnitary op = isSquare && isNormalized && isOrthogonal
+  where
+    isSquare = rows == columns
+    isNormalized = Vec.and . Vec.map ((==1.0) . normV) $ op
+    isOrthogonal = Vec.and . Vec.map (\c -> Vec.and . Vec.map ((==0.0) . (op!c `innerProdV`)) $ Vec.drop (c+1) op) $ Vec.enumFromTo 0 (columns-1)
+    rows = Vec.length $ op!0
+    columns = Vec.length op
+
+spectralDecom :: QOperator -> SpectralDecom
+spectralDecom = undefined
 
 ------------------------------------------------------
 -- Common operators
 
+identityOp :: Qubits -> QOperator
+identityOp bits = Vec.map (intV bits) $ Vec.enumFromTo 0 (2^bits-1)
 
+pauli_I, pauli_X, pauli_Y, pauli_Z :: QOperator
+pauli_I = identityOp 1
+pauli_X = Vec.fromList [Vec.fromList [0,1], Vec.fromList [1,0]]
+pauli_Y = Vec.fromList [Vec.fromList [0,0:+1], Vec.fromList [0:+(-1),0]]
+pauli_Z = Vec.fromList [Vec.fromList [1,0], Vec.fromList [0,-1]]
+
+
+hadamardRec :: QOperator -> QOperator
+hadamardRec op = scalOp (1/(sqrt 2.0)) hmat
+  where
+    negop = scalOp (negate 1) op
+    hmat = (Vec.zipWith (Vec.++) op op) Vec.++ (Vec.zipWith (Vec.++) op negop)
+
+hadamardOp :: Qubits -> QOperator
+hadamardOp 0 = identityOp 0
+hadamardOp bits = hadamardRec $ hadamardOp (bits-1)
+
+pauli_X_decom :: SpectralDecom
+pauli_X_decom = Vec.fromList [(1.0,[Vec.fromList [1:+0,1:+0]]),(-1.0,[Vec.fromList [1:+0,(-1):+0]])]
 
 -------------------------------------------------------
 -- Quantum state monads
@@ -112,3 +175,35 @@ actOn = undefined
 type QComputer = State (QState, StdGen)
 
 type QMeasure = QComputer Double
+
+randFromDist :: Vector (a,Double) -> QComputer a
+randFromDist xs
+  | Vec.length xs == 0 = error "randFromDist called from empty vector"
+  | Vec.length xs == 1 = return . fst . Vec.head $ xs
+  | otherwise = do
+      (psi,g) <- get
+      let
+        s = Vec.sum (Vec.map snd xs)
+        cs = Vec.scanl1 (\(_,summed) (num,nextProb) -> (num,summed+nextProb)) xs
+      let (p,g') = randomR (0.0,s) g
+      put (psi,g')
+      return . fst . Vec.head $ Vec.dropWhile (\(_,q) -> q<p) cs
+
+measure :: SpectralDecom -> QMeasure
+measure op = do
+  (psi,_) <- get
+  let
+    probs = Vec.map (\(eigval, eigvecs) -> (eigval, (^2) . magnitude . List.sum . List.map (`innerProdV` psi) $ eigvecs)) op
+  result <- randFromDist probs
+  (_,g) <- get
+  put (normalizeV $ projectTo (snd . Vec.head $ Vec.filter (\(ev,_) -> ev==result) op) psi, g)
+  return result
+
+{-
+compute :: QMeasure
+compute = do
+  measure pauli_Y
+  measure pauli_Z
+  measure pauli_Z
+  measure pauli_Z
+-}
