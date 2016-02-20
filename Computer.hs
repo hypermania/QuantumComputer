@@ -160,7 +160,7 @@ spectralDecom = undefined
 
 -- | 1x1 matrix containt 1, useful for defining other operators
 baseOp :: QOperator
-baseOp = Vec.fromList [Vec.fromList [0]]
+baseOp = Vec.fromList [Vec.fromList [1]]
 
 -- | Input the total number of qubits (bits) and an index (i) for a qubit
 -- give the operator that performs gate (op) on qubit i, while
@@ -188,8 +188,10 @@ hadamardOpFull bits = iterate (`tensorProdOp` hadamardBase) baseOp !! bits
 hadamardOpAt :: Qubits -> Qubits -> QOperator
 hadamardOpAt bits i = bitOpAt bits i hadamardBase
 
+{-
 pauliX_decom :: SpectralDecom
 pauliX_decom = Vec.fromList [(1.0,[Vec.fromList [1:+0,1:+0]]),(-1.0,[Vec.fromList [1:+0,(-1):+0]])]
+-}
 
 -- | Input the total number of qubits (n) and an index (i) for a qubit
 -- give an operator that performs NOT gate on qubit i
