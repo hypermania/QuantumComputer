@@ -158,26 +158,35 @@ spectralDecom = undefined
 ------------------------------------------------------
 -- Common operators
 
-identityOp :: Qubits -> QOperator
-identityOp bits = Vec.map (intV bits) $ Vec.enumFromTo 0 (2^bits-1)
+-- | 1x1 matrix containt 1, useful for defining other operators
+baseOp :: QOperator
+baseOp = Vec.fromList [Vec.fromList [0]]
+
+-- | Input the total number of qubits (bits) and an index (i) for a qubit
+-- give the operator that performs gate (op) on qubit i, while
+-- keeping the other qubits fixed
+bitOpAt :: Qubits -> Qubits -> QOperator -> QOperator
+bitOpAt bits i op = before `tensorProdOp` op `tensorProdOp` after
+  where before = iterate (`tensorProdOp` pauliI) baseOp !! (i-1)
+        after = iterate (`tensorProdOp` pauliI) baseOp !! (bits-i)
 
 pauliI, pauliX, pauliY, pauliZ :: QOperator
-pauliI = identityOp 1
+pauliI = Vec.fromList [Vec.fromList [1,0], Vec.fromList [0,1]]
 pauliX = Vec.fromList [Vec.fromList [0,1], Vec.fromList [1,0]]
 pauliY = Vec.fromList [Vec.fromList [0,0:+1], Vec.fromList [0:+(-1),0]]
 pauliZ = Vec.fromList [Vec.fromList [1,0], Vec.fromList [0,-1]]
 
+identityOp :: Qubits -> QOperator
+identityOp bits = iterate (`tensorProdOp` pauliI) baseOp !! bits
+
 hadamardBase :: QOperator
 hadamardBase = (1/sqrt 2.0) `scalOp` Vec.fromList [Vec.fromList [1,1], Vec.fromList [1,-1]]
 
-hadamardFullOp :: Qubits -> QOperator
-hadamardFullOp n = iterate (`tensorProdOp` hadamardBase) (identityOp 0) !! n
+hadamardOpFull :: Qubits -> QOperator
+hadamardOpFull bits = iterate (`tensorProdOp` hadamardBase) baseOp !! bits
 
 hadamardOpAt :: Qubits -> Qubits -> QOperator
-hadamardOpAt n i = before `tensorProdOp` hadamardBase `tensorProdOp` after
-  where before = iterate (`tensorProdOp` pauliI) (identityOp 0) !! (i-1)
-        after = iterate (`tensorProdOp` pauliI) (identityOp 0) !! (n-i)
-
+hadamardOpAt bits i = bitOpAt bits i hadamardBase
 
 pauliX_decom :: SpectralDecom
 pauliX_decom = Vec.fromList [(1.0,[Vec.fromList [1:+0,1:+0]]),(-1.0,[Vec.fromList [1:+0,(-1):+0]])]
@@ -185,9 +194,7 @@ pauliX_decom = Vec.fromList [(1.0,[Vec.fromList [1:+0,1:+0]]),(-1.0,[Vec.fromLis
 -- | Input the total number of qubits (n) and an index (i) for a qubit
 -- give an operator that performs NOT gate on qubit i
 pauliXAt :: Qubits -> Qubits -> QOperator
-pauliXAt n i = before `tensorProdOp` pauliX `tensorProdOp` after
-  where before = iterate (`tensorProdOp` pauliI) (identityOp 0) !! (i-1)
-        after = iterate (`tensorProdOp` pauliI) (identityOp 0) !! (n-i)
+pauliXAt bits i = bitOpAt bits i pauliX
 
 -- | Total number of qubits -> position of qubit in question
 phaseAt :: Qubits -> Qubits -> Double -> QOperator
@@ -227,6 +234,4 @@ measure op = do
   (_,g) <- get
   put (normalizeV $ projectTo (snd . Vec.head $ Vec.filter (\(ev,_) -> ev==result) op) psi, g)
   return result
-
-
 
