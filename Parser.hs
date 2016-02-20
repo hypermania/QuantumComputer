@@ -26,7 +26,8 @@ import Data.Char
 ---------------------------------------------
 -- Reading Coefficients
 
-type Coeff = Complex Double
+
+type Coeff = Complex Double 
 
 (<++>) :: ReadP [a] -> ReadP [a] -> ReadP [a]
 p1 <++> p2 = (++) <$> p1 <*> p2
@@ -67,10 +68,20 @@ spectFrom = Vec.fromList <$> between (char '[') (char ']') eigenSpaces
   where eigenSpace = (,) <$> double <*> (string ":" >> onbFromList)
         eigenSpaces = sepBy eigenSpace (char ',')
 
+----------------------------------------
+-- Slightly more complicated definitions
+
+
 
 ----------------------------------------
 -- Tokens
 
-token :: ReadP a -> ReadP (String, a)
-token p = (,) <$> munch1 isUpper <*> (string "=" >> p) 
+type Name = String
+type QTypeName = String
+type Token = (Name, QTypeName, String)
 
+token :: ReadP Token
+token = liftM3 (,,) (munch1 isAlphaNum) (string "=" >> munch1 isAlpha) (string ":" >> munch1 (not . (==';'))) 
+
+readDefs :: ReadP [Token]
+readDefs = string "#Definitions:" >> endBy token (string ";")
