@@ -7,7 +7,7 @@ Maintainer  : hypermania@uchicago.edu
 Stability   : experimental
 Portability : Unknown
 
-Defines basic elements of a quantum computer, including representation of the state vector and a state monad for evolution of quantum state.
+Defines basic elements of a quantum computer, including representation of the state vector, state operators, and a state monad for evolution of quantum state.
 -}
 module Computer
        (
@@ -156,11 +156,18 @@ spectralDecom :: QOperator -> SpectralDecom
 spectralDecom = undefined
 
 ------------------------------------------------------
--- Common operators
+-- Common single-bit operators
+-- (including single-bit operators for multi-bit systems
 
 -- | 1x1 matrix containt 1, useful for defining other operators
 baseOp :: QOperator
 baseOp = Vec.fromList [Vec.fromList [1]]
+
+pauliI, pauliX, pauliY, pauliZ :: QOperator
+pauliI = Vec.fromList [Vec.fromList [1,0], Vec.fromList [0,1]] --Identity
+pauliX = Vec.fromList [Vec.fromList [0,1], Vec.fromList [1,0]] --NOT gate
+pauliY = Vec.fromList [Vec.fromList [0,0:+1], Vec.fromList [0:+(-1),0]]
+pauliZ = Vec.fromList [Vec.fromList [1,0], Vec.fromList [0,-1]]
 
 -- | Input the total number of qubits (bits) and an index (i) for a qubit
 -- give the operator that performs gate (op) on qubit i, while
@@ -169,12 +176,6 @@ bitOpAt :: Qubits -> Qubits -> QOperator -> QOperator
 bitOpAt bits i op = before `tensorProdOp` op `tensorProdOp` after
   where before = iterate (`tensorProdOp` pauliI) baseOp !! (i-1)
         after = iterate (`tensorProdOp` pauliI) baseOp !! (bits-i)
-
-pauliI, pauliX, pauliY, pauliZ :: QOperator
-pauliI = Vec.fromList [Vec.fromList [1,0], Vec.fromList [0,1]]
-pauliX = Vec.fromList [Vec.fromList [0,1], Vec.fromList [1,0]]
-pauliY = Vec.fromList [Vec.fromList [0,0:+1], Vec.fromList [0:+(-1),0]]
-pauliZ = Vec.fromList [Vec.fromList [1,0], Vec.fromList [0,-1]]
 
 identityOp :: Qubits -> QOperator
 identityOp bits = iterate (`tensorProdOp` pauliI) baseOp !! bits
@@ -188,19 +189,51 @@ hadamardOpFull bits = iterate (`tensorProdOp` hadamardBase) baseOp !! bits
 hadamardOpAt :: Qubits -> Qubits -> QOperator
 hadamardOpAt bits i = bitOpAt bits i hadamardBase
 
-{-
-pauliX_decom :: SpectralDecom
-pauliX_decom = Vec.fromList [(1.0,[Vec.fromList [1:+0,1:+0]]),(-1.0,[Vec.fromList [1:+0,(-1):+0]])]
--}
-
 -- | Input the total number of qubits (n) and an index (i) for a qubit
 -- give an operator that performs NOT gate on qubit i
 pauliXAt :: Qubits -> Qubits -> QOperator
 pauliXAt bits i = bitOpAt bits i pauliX
 
+phaseOf :: Double -> QOperator
+phaseOf theta = Vec.fromList [Vec.fromList [1,0], Vec.fromList [0,mkPolar 1 theta]]
+
+phaseS, phaseT :: QOperator
+phaseS = phaseOf (pi/2)
+phaseT = phaseOf (pi/4)
+
 -- | Total number of qubits -> position of qubit in question
 phaseAt :: Qubits -> Qubits -> Double -> QOperator
-phaseAt = undefined
+phaseAt bits i theta = bitOpAt bits i (phaseOf theta)
+
+phaseSAt, phaseTAt :: Qubits -> Qubits -> QOperator
+phaseSAt bits i = bitOpAt bits i phaseS
+phaseTAt bits i = bitOpAt bits i phaseT
+
+-----------------------------------------------
+-- Controlled operators
+
+-- | single-bit projection operators
+project0, project1 :: QOperator
+project0 = Vec.fromList [Vec.fromList [1,0], Vec.fromList [0,0]]
+project1 = Vec.fromList [Vec.fromList [0,0], Vec.fromList [0,1]]
+
+-- | Controlled operator
+-- Use bit (i) to control the action of (op) on bit (j)
+-- Bit (j) is unchanged if bit (i) has value 0, and (op) is applied
+-- on bit (j) if bit (i) has value 1
+cOpAt :: Qubits -> Qubits -> Qubits -> QOperator -> QOperator
+cOpAt bits i j op
+  | i<j = (bitOpAt i i project0 `tensorProdOp` identityOp (j-i) `tensorProdOp` identityOp (bits-j))
+          `addOp`
+          (bitOpAt i i project1 `tensorProdOp` bitOpAt (j-i) (j-i) op `tensorProdOp` identityOp (bits-j))
+  | i>j = (identityOp j `tensorProdOp` bitOpAt (i-j) (i-j) project0 `tensorProdOp` identityOp (bits-i))
+          `addOp`
+          (bitOpAt j j op `tensorProdOp` bitOpAt (i-j) (i-j) project1 `tensorProdOp` identityOp (bits-i))
+
+
+cNOTAt :: Qubits -> Qubits -> Qubits -> QOperator
+cNOTAt bits i j = cOpAt bits i j pauliX
+
 
 -------------------------------------------------------
 -- Quantum state monads
@@ -237,3 +270,7 @@ measure op = do
   put (normalizeV $ projectTo (snd . Vec.head $ Vec.filter (\(ev,_) -> ev==result) op) psi, g)
   return result
 
+{-
+pauliX_decom :: SpectralDecom
+pauliX_decom = Vec.fromList [(1.0,[Vec.fromList [1:+0,1:+0]]),(-1.0,[Vec.fromList [1:+0,(-1):+0]])]
+-}
