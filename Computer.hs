@@ -1,5 +1,5 @@
 {-|
-Module      : Quantum.Computer
+Module      : Computer
 Description : Implements basic elements of a quantum computer
 Copyright   : Siyang Ling, 2016
 License     : none
@@ -7,11 +7,19 @@ Maintainer  : hypermania@uchicago.edu
 Stability   : experimental
 Portability : Unknown
 
-Defines basic elementss of a quantum computer, including representation of the state vector and a state monad for evolution of quantum state.
+Defines basic elements of a quantum computer, including representation of the state vector and a state monad for evolution of quantum state.
 -}
-module Quantum.Computer where
+module Computer
+       (
+         QState,
+         ONB,
+         QOperator,
+         SpectralDecom,
+         transposeOp
+       )
+       where
 
-import Data.List as List
+import qualified Data.List as List
 import Data.Vector as Vec
 import Data.Complex
 import Control.Monad
@@ -40,7 +48,7 @@ scalV k = Vec.map (*k)
 
 -- | State norm
 normV :: QState -> Double
-normV = sqrt . Vec.sum . Vec.map (\c -> (magnitude c)^2)
+normV = sqrt . Vec.sum . Vec.map (\c -> magnitude c ^ 2)
 
 -- | Normalize state
 normalizeV :: QState -> QState
@@ -75,7 +83,7 @@ zeroV n = Vec.replicate (2^n) (0:+0)
 -- bits denote the number of qubits used
 -- the input should satisfy n<2^bits
 intV :: Qubits -> Int -> QState
-intV bits n = (Vec.replicate n (0:+0)) Vec.++ Vec.singleton (1:+0) Vec.++ (Vec.replicate (2^bits-(n+1)) (0:+0))
+intV bits n = Vec.replicate n (0:+0) Vec.++ Vec.singleton (1:+0) Vec.++ Vec.replicate (2^bits-(n+1)) (0:+0)
 
 -- | The vector that represents the zero number |00..0>
 -- not to be confused with the zero vector (zeroV)
@@ -123,7 +131,7 @@ hConjugateOp :: QOperator -> QOperator
 hConjugateOp = transposeOp . conjugateOp
 
 commutatorOp :: QOperator -> QOperator -> QOperator
-commutatorOp op1 op2 = (op1 `multOp` op2) `addOp` (scalOp (-1) (op2 `multOp` op1))
+commutatorOp op1 op2 = (op1 `multOp` op2) `addOp` scalOp (-1) (op2 `multOp` op1)
 
 isHermitian :: QOperator -> Bool
 isHermitian op = hConjugateOp op == op
@@ -146,11 +154,11 @@ spectralDecom = undefined
 identityOp :: Qubits -> QOperator
 identityOp bits = Vec.map (intV bits) $ Vec.enumFromTo 0 (2^bits-1)
 
-pauli_I, pauli_X, pauli_Y, pauli_Z :: QOperator
-pauli_I = identityOp 1
-pauli_X = Vec.fromList [Vec.fromList [0,1], Vec.fromList [1,0]]
-pauli_Y = Vec.fromList [Vec.fromList [0,0:+1], Vec.fromList [0:+(-1),0]]
-pauli_Z = Vec.fromList [Vec.fromList [1,0], Vec.fromList [0,-1]]
+pauliI, pauliX, pauliY, pauliZ :: QOperator
+pauliI = identityOp 1
+pauliX = Vec.fromList [Vec.fromList [0,1], Vec.fromList [1,0]]
+pauliY = Vec.fromList [Vec.fromList [0,0:+1], Vec.fromList [0:+(-1),0]]
+pauliZ = Vec.fromList [Vec.fromList [1,0], Vec.fromList [0,-1]]
 
 
 hadamardRec :: QOperator -> QOperator
@@ -163,8 +171,8 @@ hadamardOp :: Qubits -> QOperator
 hadamardOp 0 = identityOp 0
 hadamardOp bits = hadamardRec $ hadamardOp (bits-1)
 
-pauli_X_decom :: SpectralDecom
-pauli_X_decom = Vec.fromList [(1.0,[Vec.fromList [1:+0,1:+0]]),(-1.0,[Vec.fromList [1:+0,(-1):+0]])]
+pauliX_decom :: SpectralDecom
+pauliX_decom = Vec.fromList [(1.0,[Vec.fromList [1:+0,1:+0]]),(-1.0,[Vec.fromList [1:+0,(-1):+0]])]
 
 -------------------------------------------------------
 -- Quantum state monads
@@ -174,7 +182,7 @@ pauli_X_decom = Vec.fromList [(1.0,[Vec.fromList [1:+0,1:+0]]),(-1.0,[Vec.fromLi
 -- number generator that is used at quantum measurements
 type QComputer = State (QState, StdGen)
 
-type QMeasure = QComputer Double
+type QMeasure = QComputer
 
 randFromDist :: Vector (a,Double) -> QComputer a
 randFromDist xs
@@ -189,7 +197,7 @@ randFromDist xs
       put (psi,g')
       return . fst . Vec.head $ Vec.dropWhile (\(_,q) -> q<p) cs
 
-measure :: SpectralDecom -> QMeasure
+measure :: SpectralDecom -> QMeasure Double
 measure op = do
   (psi,_) <- get
   let
@@ -199,11 +207,9 @@ measure op = do
   put (normalizeV $ projectTo (snd . Vec.head $ Vec.filter (\(ev,_) -> ev==result) op) psi, g)
   return result
 
-{-
-compute :: QMeasure
+
+compute :: QMeasure Double
 compute = do
-  measure pauli_Y
-  measure pauli_Z
-  measure pauli_Z
-  measure pauli_Z
--}
+  measure pauliX_decom
+  measure pauliX_decom
+
