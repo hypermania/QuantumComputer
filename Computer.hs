@@ -16,7 +16,9 @@ module Computer
          Qubits,
          QOperator,
          SpectralDecom,
-         transposeOp
+         transposeOp,
+         intV,
+         superposedIntV
        )
        where
 
@@ -212,10 +214,10 @@ phaseTAt bits i = bitOpAt bits i phaseT
 -----------------------------------------------
 -- Controlled operators
 
--- | single-bit projection operators
-project0, project1 :: QOperator
-project0 = Vec.fromList [Vec.fromList [1,0], Vec.fromList [0,0]]
-project1 = Vec.fromList [Vec.fromList [0,0], Vec.fromList [0,1]]
+-- | Single-bit projection operators
+projTo0, projTo1 :: QOperator
+projTo0 = Vec.fromList [Vec.fromList [1,0], Vec.fromList [0,0]]
+projTo1 = Vec.fromList [Vec.fromList [0,0], Vec.fromList [0,1]]
 
 -- | Controlled operator
 -- Use bit (i) to control the action of (op) on bit (j)
@@ -223,13 +225,13 @@ project1 = Vec.fromList [Vec.fromList [0,0], Vec.fromList [0,1]]
 -- on bit (j) if bit (i) has value 1
 cOpAt :: Qubits -> Qubits -> Qubits -> QOperator -> QOperator
 cOpAt bits i j op
-  | i<j = (bitOpAt i i project0 `tensorProdOp` identityOp (j-i) `tensorProdOp` identityOp (bits-j))
+  | i<j = (bitOpAt i i projTo0 `tensorProdOp` identityOp (j-i) `tensorProdOp` identityOp (bits-j))
           `addOp`
-          (bitOpAt i i project1 `tensorProdOp` bitOpAt (j-i) (j-i) op `tensorProdOp` identityOp (bits-j))
-  | i>j = (identityOp j `tensorProdOp` bitOpAt (i-j) (i-j) project0 `tensorProdOp` identityOp (bits-i))
+          (bitOpAt i i projTo1 `tensorProdOp` bitOpAt (j-i) (j-i) op `tensorProdOp` identityOp (bits-j))
+  | i>j = (identityOp j `tensorProdOp` bitOpAt (i-j) (i-j) projTo0 `tensorProdOp` identityOp (bits-i))
           `addOp`
-          (bitOpAt j j op `tensorProdOp` bitOpAt (i-j) (i-j) project1 `tensorProdOp` identityOp (bits-i))
-
+          (bitOpAt j j op `tensorProdOp` bitOpAt (i-j) (i-j) projTo1 `tensorProdOp` identityOp (bits-i))
+  | i==j = error "Cannot control an operation on a bit by the same bit"
 
 cNOTAt :: Qubits -> Qubits -> Qubits -> QOperator
 cNOTAt bits i j = cOpAt bits i j pauliX
