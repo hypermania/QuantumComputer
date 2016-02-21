@@ -1,0 +1,22 @@
+#States:{
+INIT = Vec:[0,0];
+E0 = Vec:[1,0];
+E1 = Vec:[0,1];
+E2 = VecInt:(1,1);
+}
+
+#Operators:{
+Z = Mat:[[1,0],[0,-1]];
+H = BitwiseHadamard:(1,1);
+}
+
+#SpectralDecoms:{
+P = EigenSys:[1:[[1,0]],(-1):[[0,-1]]];
+}
+
+#Commands:{
+apply H;
+measure P;
+}
+
+
