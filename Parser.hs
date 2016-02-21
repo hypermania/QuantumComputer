@@ -38,9 +38,13 @@ digits = munch1 isDigit
 parenth :: ReadP String -> ReadP String
 parenth p = string "(" <++> p <++> string ")"
 
+int :: ReadP Int
+int = read <$> (intForm +++ parenth intForm)
+  where intForm = option "" (string "-") <++> digits
+
 double :: ReadP Double
-double = read <$> (doubform +++ parenth doubform)
-  where doubform = (noDec <++> string "." <++> digits) <++ noDec
+double = read <$> (doubForm +++ parenth doubForm)
+  where doubForm = (noDec <++> string "." <++> digits) <++ noDec
         noDec = option "" (string "-") <++> digits
 
 coeff :: ReadP Coeff
@@ -66,37 +70,53 @@ onbFromList = (map Vec.fromList) <$> coeffMat
 opFromList :: ReadP QOperator
 opFromList = transposeOp <$> Vec.fromList <$> (map Vec.fromList) <$> coeffMat
 
-spectFrom :: ReadP SpectralDecom
-spectFrom = Vec.fromList <$> between (char '[') (char ']') eigenSpaces
+spectFromList :: ReadP SpectralDecom
+spectFromList = Vec.fromList <$> between (char '[') (char ']') eigenSpaces
   where eigenSpace = (,) <$> double <*> (string ":" >> onbFromList)
         eigenSpaces = sepBy eigenSpace (char ',')
 
 ----------------------------------------
--- Tokens
+-- Reading definitions
 
 type Name = String
 type Store a = Map.Map Name a
 
-{-
-token :: ReadP Token
-token = liftM3 (,,) (munch1 isAlphaNum) (string "=" >> munch1 isAlpha) (string ":" >> munch1 (not . (==';')))
+read2Int :: ReadP (Int, Int)
+read2Int = char '(' >> ((,) <$> int <*> (char ',' >> int)) <* char ')'
 
-readDefs :: ReadP [Token]
-readDefs = string "#Definitions:" >> endBy token (string ";")
--}
-
-readIntTuple2 :: ReadP (Int, Int)
-readIntTuple2 = (,) <$>
-                (char '(' >> read <$> digits) <*>
-                (char ',' >> read <$> digits <* char ')')
+read3Int :: ReadP (Int, Int, Int)
+read3Int = char '(' >> (liftM3 (,,) int (char ',' >> int) (char ',' >> int)) <* char ')'
 
 readState :: ReadP (Name, QState)
 readState = (,) <$> (munch1 isAlphaNum) <*> (string "=" >> choice stateFormats)
-  where stateFormats = [string "Vec:" >> stateFromList,
-                        string "VecInt:" >> ((uncurry intV) <$> readIntTuple2)
-                       ]
+  where stateFormats =
+          [string "Vec:" >> stateFromList,
+           string "VecInt:" >> (uncurry intV) <$> read2Int
+          ]
 
 readStates :: ReadP (Store QState)
 readStates = Map.fromList <$> endBy readState (char ';')
 
+readOp :: ReadP (Name, QOperator)
+readOp = (,) <$> (munch1 isAlphaNum) <*> (string "=" >> choice opFormats)
+  where opFormats =
+          [string "Mat:" >> opFromList,
+           string "FullHadamard:" >> hadamardOpFull <$> int,
+           string "BitwiseHadamard:" >> (uncurry hadamardOpAt) <$> read2Int
+          ]
+
+readOps :: ReadP (Store QOperator)
+readOps = Map.fromList <$> endBy readOp (char ';')
+
+readSpect :: ReadP (Name, SpectralDecom)
+readSpect = (,) <$> (munch1 isAlphaNum) <*> (string "=" >> choice spectFormats)
+  where spectFormats =
+          [string "Vec:" >> spectFromList
+          ]
+
+readSpects :: ReadP (Store SpectralDecom)
+readSpects = Map.fromList <$> endBy readSpect (char ';')
+
+-------------------------------------
+-- Reading commands
 

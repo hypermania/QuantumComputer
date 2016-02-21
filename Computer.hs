@@ -18,7 +18,9 @@ module Computer
          SpectralDecom,
          transposeOp,
          intV,
-         superposedIntV
+         superposedIntV,
+         hadamardOpAt,
+         hadamardOpFull
        )
        where
 
