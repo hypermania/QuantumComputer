@@ -120,3 +120,10 @@ readSpects = Map.fromList <$> endBy readSpect (char ';')
 -------------------------------------
 -- Reading commands
 
+readCommand :: Store QState -> Store QOperator -> Store SpectralDecom
+            -> ReadP (QComputer ())
+readCommand vec op spect = choice actionType
+  where actionType =
+          [string "apply:" >> (\name -> applyGate (op Map.! name)) <$> munch1 isAlphaNum
+            ]
+

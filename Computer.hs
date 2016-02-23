@@ -16,11 +16,14 @@ module Computer
          Qubits,
          QOperator,
          SpectralDecom,
+         QComputer,
          transposeOp,
          intV,
          superposedIntV,
          hadamardOpAt,
-         hadamardOpFull
+         hadamardOpFull,
+         actOn,
+         applyGate
        )
        where
 
@@ -273,6 +276,16 @@ measure op = do
   (_,g) <- get
   put (normalizeV $ projectTo (snd . Vec.head $ Vec.filter (\(ev,_) -> ev==result) op) psi, g)
   return result
+
+initialize :: QState -> QComputer ()
+initialize vec = do
+  (_,g) <- get
+  put (vec,g)
+
+applyGate :: QOperator -> QComputer ()
+applyGate op = do
+  (psi,g) <- get
+  put (op `actOn` psi, g)
 
 {-
 pauliX_decom :: SpectralDecom

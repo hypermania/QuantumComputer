@@ -15,8 +15,8 @@ P = EigenSys:[1:[[1,0]],(-1):[[0,-1]]];
 }
 
 #Commands:{
-apply H;
-measure P;
+apply:H;
+measure:P;
 }
 
 
