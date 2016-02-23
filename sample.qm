@@ -15,8 +15,7 @@ P = EigenSys:[1:[[1,0]],(-1):[[0,-1]]];
 }
 
 #Commands:{
-InitializeTo:INIT;
-Apply:Z;
+InitializeTo:E0;
+Apply:H;
+SpectMeasure:P;
 }
-
-

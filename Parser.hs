@@ -126,7 +126,9 @@ readCommand vecs ops spects = choice actionType
           [string "Apply:"
            >> (\name -> applyGate (ops Map.! name)) <$> munch1 isAlphaNum,
            string "InitializeTo:"
-           >> (\name -> initialize (vecs Map.! name)) <$> munch1 isAlphaNum
+           >> (\name -> initialize (vecs Map.! name)) <$> munch1 isAlphaNum,
+           string "SpectMeasure:"
+           >> (\name -> spectMeasure (spects Map.! name)) <$> munch1 isAlphaNum
           ]
 
 readCommands :: Store QState -> Store QOperator -> Store SpectralDecom

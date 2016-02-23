@@ -26,6 +26,7 @@ module Computer
          actOn,
          initialize,
          applyGate,
+         spectMeasure,
          evalQC
        )
        where
