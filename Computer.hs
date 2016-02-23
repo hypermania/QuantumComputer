@@ -254,6 +254,32 @@ type QComputer = State (QState, StdGen)
 -- measurements only (POVM measurement not included)
 type QMeasure = QComputer
 
+type QComputer' = RandT StdGen (State QState)
+{-
+rand :: QComputer' Double
+rand = do
+  psi <- get
+  return $ 2 --
+  psi `innerProdV` intV 2 1
+-}
+randFromDist' :: Vector (a,Double) -> QComputer' a
+randFromDist' xs
+  | Vec.length xs == 0 = error "randFromDist' called from empty vector"
+  | Vec.length xs == 1 = return . fst . Vec.head $ xs
+  | otherwise = do
+      let
+        s = Vec.sum (Vec.map snd xs)
+        cs = Vec.scanl1 (\(_,summed) (num,nextProb) -> (num,summed+nextProb)) xs
+      p <- getRandomR (0.0, s)
+      return . fst . Vec.head $ Vec.dropWhile (\(_,q) -> q<p) cs
+{-
+measureONB' :: SpectralDecom -> QComputer' Double
+measureONB' spect = do
+  psi <- lift . get
+  let probs = Vec.map (\(eigval, eigvecs) -> (eigval, (^2) . magnitude . List.sum . List.map (`innerProdV` psi) $ eigvecs)) spect
+  result <- randFromDist' probs
+  return $ evalState result psi
+-}
 randFromDist :: Vector (a,Double) -> QComputer a
 randFromDist xs
   | Vec.length xs == 0 = error "randFromDist called from empty vector"
