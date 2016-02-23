@@ -32,7 +32,7 @@ import Data.Complex
 import Control.Monad
 import Control.Monad.Random
 import Control.Monad.State
-import Control.Monad.Writer
+import Control.Monad.Except
 import Control.Applicative
 
 ------------------------------------------------------------
@@ -251,7 +251,7 @@ cNOTAt bits i j = cOpAt bits i j pauliX
 -- | The monad representing the quantum computer.
 -- State monad is used for representing the quantum state.
 -- RandT monad is used to generate random number in case of measurement.
-type QComputer = RandT StdGen (State QState)
+type QComputer = ExceptT String (RandT StdGen (State QState))
 
 -- | A probability distribution of a
 type Distribution a = Vector (a, Double)
@@ -259,6 +259,14 @@ type Distribution a = Vector (a, Double)
 -- | Various commands a quantum computer takes
 -- For measurements, the value of measurement is also returned (in wrapped form)
 data QCommand = Initialize | Unitary | MeasureDouble Double | MeasureInt Int
+              deriving Show
+
+-- | evaluate a QComputer monad
+-- g is the random generator, and qc is the QComputer monad
+-- The state is initialized as (zeroV 0)
+-- In case of an error, an error message is returned
+evalQC :: StdGen -> QComputer a -> Either String a
+evalQC g qc = evalState (evalRandT (runExceptT qc) g) (zeroV 0)
 
 initialize :: QState -> QComputer QCommand
 initialize vec = put vec >> return Initialize
@@ -266,18 +274,28 @@ initialize vec = put vec >> return Initialize
 applyGate :: QOperator -> QComputer QCommand
 applyGate op = do
   psi <- get
+  if Vec.length op == Vec.length psi
+    then return ()
+    else throwError "Operator size do not match state vector"
   put $ op `actOn` psi
   return Unitary
 
+getSize :: QComputer Int
+getSize = do
+  psi <- get
+  return $ Vec.length psi
+
 -- | Given probability distribution of a, choose a random instance of a
+-- similar to implementation for fromList in Control.Monad.Random
 fromDist :: Distribution a -> QComputer a
 fromDist xs
-  | Vec.length xs == 0 = error "randFromDist' called from empty vector"
+  | Vec.length xs == 0 = throwError "randFromDist' called from empty vector"
   | Vec.length xs == 1 = return . fst . Vec.head $ xs
   | otherwise = do
       let
         s = Vec.sum (Vec.map snd xs)
         cs = Vec.scanl1 (\(_,summed) (num,nextProb) -> (num,summed+nextProb)) xs
+      if s==0 then throwError "probability sum to 0" else return ()
       p <- getRandomR (0.0, s)
       return . fst . Vec.head $ Vec.dropWhile (\(_,q) -> q<p) cs
 
