@@ -32,6 +32,7 @@ import Data.Complex
 import Control.Monad
 import Control.Monad.Random
 import Control.Monad.State
+import Control.Monad.Writer
 import Control.Applicative
 
 ------------------------------------------------------------
@@ -247,20 +248,30 @@ cNOTAt bits i j = cOpAt bits i j pauliX
 -------------------------------------------------------
 -- Quantum state monads
 
--- | The state monad representing the quantum computer QState 
--- is the quantum state of the computer, StdGen is a random
--- number generator that is used at quantum measurements
+-- | The monad representing the quantum computer.
+-- State monad is used for representing the quantum state.
+-- RandT monad is used to generate random number in case of measurement.
 type QComputer = RandT StdGen (State QState)
-
--- | The measurement defined here is restricted to projective
--- measurements only (POVM measurement not included)
-type QMeasure = QComputer
 
 -- | A probability distribution of a
 type Distribution a = Vector (a, Double)
 
-randFromDist :: Distribution a -> QComputer a
-randFromDist xs
+-- | Various commands a quantum computer takes
+-- For measurements, the value of measurement is also returned (in wrapped form)
+data QCommand = Initialize | Unitary | MeasureDouble Double | MeasureInt Int
+
+initialize :: QState -> QComputer QCommand
+initialize vec = put vec >> return Initialize
+
+applyGate :: QOperator -> QComputer QCommand
+applyGate op = do
+  psi <- get
+  put $ op `actOn` psi
+  return Unitary
+
+-- | Given probability distribution of a, choose a random instance of a
+fromDist :: Distribution a -> QComputer a
+fromDist xs
   | Vec.length xs == 0 = error "randFromDist' called from empty vector"
   | Vec.length xs == 1 = return . fst . Vec.head $ xs
   | otherwise = do
@@ -278,30 +289,20 @@ spectDist spect = do
     (\(val, onb) -> 
       ((val, onb), (^2) . magnitude . List.sum . List.map (`innerProdV` psi) $ onb)) spect
     
--- | Measure 
-spectMeasure :: SpectralDecom -> QComputer Double
+-- | Measure with respect to a SpectralDecom
+spectMeasure :: SpectralDecom -> QComputer QCommand
 spectMeasure spect = do
   psi <- get
-  (val, onb) <- spectDist spect >>= randFromDist
+  (val, onb) <- spectDist spect >>= fromDist
   put $ normalizeV $ projectTo onb psi
-  return val
+  return $ MeasureDouble val
 
-measureNumber :: QComputer Int
+-- | Measure the number the QComputer represents
+measureNumber :: QComputer QCommand
 measureNumber = do
   psi <- get
   let probs = Vec.zipWith (,) (Vec.enumFromN 0 (Vec.length psi)) (Vec.map ((^2) . magnitude) psi)
-  result <- randFromDist probs
-  return result
+  result <- fromDist probs
+  return $ MeasureInt result
 
-initialize :: QState -> QComputer ()
-initialize = put
-
-applyGate :: QOperator -> QComputer ()
-applyGate op = do
-  psi <- get
-  put $ op `actOn` psi
   
-{-
-pauliX_decom :: SpectralDecom
-pauliX_decom = Vec.fromList [(1.0,[Vec.fromList [1:+0,1:+0]]),(-1.0,[Vec.fromList [1:+0,(-1):+0]])]
--}
