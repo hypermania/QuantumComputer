@@ -15,7 +15,7 @@ module Parser where
 import Text.ParserCombinators.ReadP
 import Control.Monad
 import Control.Monad.State
-
+import Control.Monad.Random
 import Computer
 
 import qualified Data.Vector as Vec
@@ -25,7 +25,6 @@ import qualified Data.Map as Map
 
 ---------------------------------------------
 -- Reading Coefficients
-
 
 type Coeff = Complex Double 
 
@@ -111,7 +110,7 @@ readOps = Map.fromList <$> endBy readOp (char ';')
 readSpect :: ReadP (Name, SpectralDecom)
 readSpect = (,) <$> (munch1 isAlphaNum) <*> (string "=" >> choice spectFormats)
   where spectFormats =
-          [string "Vec:" >> spectFromList
+          [string "EigenSys:" >> spectFromList
           ]
 
 readSpects :: ReadP (Store SpectralDecom)
@@ -119,11 +118,31 @@ readSpects = Map.fromList <$> endBy readSpect (char ';')
 
 -------------------------------------
 -- Reading commands
-{-
+
 readCommand :: Store QState -> Store QOperator -> Store SpectralDecom
-            -> ReadP (QComputer ())
-readCommand vec op spect = choice actionType
+            -> ReadP (QComputer QCommand)
+readCommand vecs ops spects = choice actionType
   where actionType =
-          [string "apply:" >> (\name -> applyGate (op Map.! name)) <$> munch1 isAlphaNum
-            ]
--}
+          [string "apply:"
+           >> (\name -> applyGate (ops Map.! name)) <$> munch1 isAlphaNum
+          ]
+
+readCommands :: Store QState -> Store QOperator -> Store SpectralDecom
+             -> ReadP [QComputer QCommand]
+readCommands vecs ops spects = endBy (readCommand vecs ops spects) (char ';')
+          
+readComputation :: ReadP (QComputer [QCommand])
+readComputation = do
+  string "#States:"
+  vecs <- (char '{' >> readStates) <* char '}'
+  string "#Operators:"
+  ops <- char '{' >> readOps <* char '}'
+  string "#SpectralDecoms:"
+  spects <- char '{' >> readSpects <* char '}'
+  string "#Commands:"
+  cmds <- char '{' >> (readCommands vecs ops spects) <* char '}'
+  return $ Control.Monad.sequence cmds
+
+runInput :: StdGen -> String -> Either String [QCommand]
+runInput g input = evalQC g $ fst . last $ (readP_to_S readComputation input)
+

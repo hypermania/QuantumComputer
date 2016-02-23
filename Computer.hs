@@ -17,12 +17,15 @@ module Computer
          QOperator,
          SpectralDecom,
          QComputer,
+         QCommand,
          transposeOp,
          intV,
          superposedIntV,
          hadamardOpAt,
          hadamardOpFull,
-         actOn
+         actOn,
+         applyGate,
+         evalQC
        )
        where
 
@@ -258,7 +261,10 @@ type Distribution a = Vector (a, Double)
 
 -- | Various commands a quantum computer takes
 -- For measurements, the value of measurement is also returned (in wrapped form)
-data QCommand = Initialize | Unitary | MeasureDouble Double | MeasureInt Int
+data QCommand = Initialize
+              | Unitary
+              | MeasureDouble Double
+              | MeasureInt Int
               deriving Show
 
 -- | evaluate a QComputer monad
@@ -271,19 +277,19 @@ evalQC g qc = evalState (evalRandT (runExceptT qc) g) (zeroV 0)
 initialize :: QState -> QComputer QCommand
 initialize vec = put vec >> return Initialize
 
-applyGate :: QOperator -> QComputer QCommand
-applyGate op = do
+checkOpSize :: QOperator -> QComputer ()
+checkOpSize op = do
   psi <- get
   if Vec.length op == Vec.length psi
     then return ()
     else throwError "Operator size do not match state vector"
+
+applyGate :: QOperator -> QComputer QCommand
+applyGate op = do
+  checkOpSize op
+  psi <- get
   put $ op `actOn` psi
   return Unitary
-
-getSize :: QComputer Int
-getSize = do
-  psi <- get
-  return $ Vec.length psi
 
 -- | Given probability distribution of a, choose a random instance of a
 -- similar to implementation for fromList in Control.Monad.Random

@@ -33,8 +33,7 @@ main = do
   f <- openFile (args!!0) ReadMode
   contents <- hGetContents f
   let reduced1 = filter (/=' ') . filter (/='\n') $ contents
-  let reduced2 = readP_to_S readDefs reduced1
-  putStrLn $ show $ last reduced2
+  putStrLn $ show $ last reduced1
   --putStrLn $ show $ readP_to_S opFromList result
   hClose f
   
