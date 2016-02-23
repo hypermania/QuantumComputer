@@ -2,18 +2,9 @@ import Computer
 import Parser
 import System.Environment
 import System.IO
-import Text.ParserCombinators.ReadP
-import Data.Char
+import System.Random
 import Data.Complex
 import qualified Data.Vector as Vec
-
-{-
-compute :: QMeasure Double
-compute = do
-  measure pauliX_decom
-  measure pauliX_decom
--}
-
 
 formatVec :: Int -> QState -> String
 formatVec n vec = (concat $ map (truncStr (2*n+4) . show) $ enumFromTo 0 (length coeffList-1))
@@ -27,13 +18,16 @@ formatVec n vec = (concat $ map (truncStr (2*n+4) . show) $ enumFromTo 0 (length
         coeffList = Vec.toList vec
 
 
--- | Testing
+-- | Preliminary executable
 main = do
   args <- getArgs
-  f <- openFile (args!!0) ReadMode
-  contents <- hGetContents f
-  let reduced1 = filter (/=' ') . filter (/='\n') $ contents
-  putStrLn $ show $ last reduced1
-  --putStrLn $ show $ readP_to_S opFromList result
-  hClose f
+  if length args == 0
+    then error "no input argument"
+    else do
+    f <- openFile (args!!0) ReadMode
+    contents <- hGetContents f
+    let processed = filter (/=' ') . filter (/='\n') $ contents
+    g <- newStdGen
+    putStrLn $ show $ runInput g processed
+    hClose f
   

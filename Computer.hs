@@ -24,6 +24,7 @@ module Computer
          hadamardOpAt,
          hadamardOpFull,
          actOn,
+         initialize,
          applyGate,
          evalQC
        )

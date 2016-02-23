@@ -123,14 +123,20 @@ readCommand :: Store QState -> Store QOperator -> Store SpectralDecom
             -> ReadP (QComputer QCommand)
 readCommand vecs ops spects = choice actionType
   where actionType =
-          [string "apply:"
-           >> (\name -> applyGate (ops Map.! name)) <$> munch1 isAlphaNum
+          [string "Apply:"
+           >> (\name -> applyGate (ops Map.! name)) <$> munch1 isAlphaNum,
+           string "InitializeTo:"
+           >> (\name -> initialize (vecs Map.! name)) <$> munch1 isAlphaNum
           ]
 
 readCommands :: Store QState -> Store QOperator -> Store SpectralDecom
              -> ReadP [QComputer QCommand]
 readCommands vecs ops spects = endBy (readCommand vecs ops spects) (char ';')
-          
+
+
+-------------------------------------
+-- Reading a complete file
+
 readComputation :: ReadP (QComputer [QCommand])
 readComputation = do
   string "#States:"
@@ -144,5 +150,8 @@ readComputation = do
   return $ Control.Monad.sequence cmds
 
 runInput :: StdGen -> String -> Either String [QCommand]
-runInput g input = evalQC g $ fst . last $ (readP_to_S readComputation input)
+runInput g input = if length parsed > 0
+                   then evalQC g $ fst . last $ parsed
+                   else Left "No parse"
+  where parsed = readP_to_S readComputation input
 
