@@ -22,8 +22,7 @@ module Computer
          superposedIntV,
          hadamardOpAt,
          hadamardOpFull,
-         actOn,
-         applyGate
+         actOn
        )
        where
 
@@ -140,7 +139,10 @@ hConjugateOp = transposeOp . conjugateOp
 
 -- | Tensor product for an operator
 tensorProdOp :: QOperator -> QOperator -> QOperator
-tensorProdOp a b = Vec.map (\k -> join $ Vec.map (`scalV` (b Vec.! (k `mod` q))) (a Vec.! (k `div` q))) $ Vec.enumFromTo 0 (p*q-1)
+tensorProdOp a b = Vec.map (\k -> tensorProdV
+                                  (a ! (k `div` q))
+                                  (b ! (k `mod` q)))
+                   $ Vec.enumFromTo 0 (p*q-1)
   where p = Vec.length a
         q = Vec.length b
 
@@ -159,8 +161,8 @@ isUnitary op = isSquare && isNormalized && isOrthogonal
     rows = Vec.length $ op!0
     columns = Vec.length op
 
-spectralDecom :: QOperator -> SpectralDecom
-spectralDecom = undefined
+spectFromOp :: QOperator -> SpectralDecom
+spectFromOp = undefined
 
 ------------------------------------------------------
 -- Common single-bit operators
@@ -248,22 +250,17 @@ cNOTAt bits i j = cOpAt bits i j pauliX
 -- | The state monad representing the quantum computer QState 
 -- is the quantum state of the computer, StdGen is a random
 -- number generator that is used at quantum measurements
-type QComputer = State (QState, StdGen)
+type QComputer = RandT StdGen (State QState)
 
 -- | The measurement defined here is restricted to projective
 -- measurements only (POVM measurement not included)
 type QMeasure = QComputer
 
-type QComputer' = RandT StdGen (State QState)
-{-
-rand :: QComputer' Double
-rand = do
-  psi <- get
-  return $ 2 --
-  psi `innerProdV` intV 2 1
--}
-randFromDist' :: Vector (a,Double) -> QComputer' a
-randFromDist' xs
+-- | A probability distribution of a
+type Distribution a = Vector (a, Double)
+
+randFromDist :: Distribution a -> QComputer a
+randFromDist xs
   | Vec.length xs == 0 = error "randFromDist' called from empty vector"
   | Vec.length xs == 1 = return . fst . Vec.head $ xs
   | otherwise = do
@@ -272,47 +269,38 @@ randFromDist' xs
         cs = Vec.scanl1 (\(_,summed) (num,nextProb) -> (num,summed+nextProb)) xs
       p <- getRandomR (0.0, s)
       return . fst . Vec.head $ Vec.dropWhile (\(_,q) -> q<p) cs
-{-
-measureONB' :: SpectralDecom -> QComputer' Double
-measureONB' spect = do
-  psi <- lift . get
-  let probs = Vec.map (\(eigval, eigvecs) -> (eigval, (^2) . magnitude . List.sum . List.map (`innerProdV` psi) $ eigvecs)) spect
-  result <- randFromDist' probs
-  return $ evalState result psi
--}
-randFromDist :: Vector (a,Double) -> QComputer a
-randFromDist xs
-  | Vec.length xs == 0 = error "randFromDist called from empty vector"
-  | Vec.length xs == 1 = return . fst . Vec.head $ xs
-  | otherwise = do
-      (psi,g) <- get
-      let
-        s = Vec.sum (Vec.map snd xs)
-        cs = Vec.scanl1 (\(_,summed) (num,nextProb) -> (num,summed+nextProb)) xs
-      let (p,g') = randomR (0.0,s) g
-      put (psi,g')
-      return . fst . Vec.head $ Vec.dropWhile (\(_,q) -> q<p) cs
 
-measure :: SpectralDecom -> QMeasure Double
-measure op = do
-  (psi,_) <- get
-  let
-    probs = Vec.map (\(eigval, eigvecs) -> (eigval, (^2) . magnitude . List.sum . List.map (`innerProdV` psi) $ eigvecs)) op
+-- | Given spectral decomposition, give the probability distribution of (eigenvalues, eigenvectors)
+spectDist :: SpectralDecom -> QComputer (Distribution (Double, ONB))
+spectDist spect = do
+  psi <- get
+  return $ Vec.map
+    (\(val, onb) -> 
+      ((val, onb), (^2) . magnitude . List.sum . List.map (`innerProdV` psi) $ onb)) spect
+    
+-- | Measure 
+spectMeasure :: SpectralDecom -> QComputer Double
+spectMeasure spect = do
+  psi <- get
+  (val, onb) <- spectDist spect >>= randFromDist
+  put $ normalizeV $ projectTo onb psi
+  return val
+
+measureNumber :: QComputer Int
+measureNumber = do
+  psi <- get
+  let probs = Vec.zipWith (,) (Vec.enumFromN 0 (Vec.length psi)) (Vec.map ((^2) . magnitude) psi)
   result <- randFromDist probs
-  (_,g) <- get
-  put (normalizeV $ projectTo (snd . Vec.head $ Vec.filter (\(ev,_) -> ev==result) op) psi, g)
   return result
 
 initialize :: QState -> QComputer ()
-initialize vec = do
-  (_,g) <- get
-  put (vec,g)
+initialize = put
 
 applyGate :: QOperator -> QComputer ()
 applyGate op = do
-  (psi,g) <- get
-  put (op `actOn` psi, g)
-
+  psi <- get
+  put $ op `actOn` psi
+  
 {-
 pauliX_decom :: SpectralDecom
 pauliX_decom = Vec.fromList [(1.0,[Vec.fromList [1:+0,1:+0]]),(-1.0,[Vec.fromList [1:+0,(-1):+0]])]
