@@ -93,11 +93,16 @@ read2Int = char '(' >> ((,) <$> int <*> (char ',' >> int)) <* char ')'
 read3Int :: ReadP (Int, Int, Int)
 read3Int = char '(' >> (liftM3 (,,) int (char ',' >> int) (char ',' >> int)) <* char ')'
 
+uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
+uncurry3 f (a,b,c) = f a b c
+
 readState :: ReadP (Name, QState)
 readState = (,) <$> (munch1 isAlphaNum) <*> (string "=" >> choice stateFormats)
   where stateFormats =
           [string "Vec:" >> stateFromList,
-           string "VecInt:" >> (uncurry intV) <$> read2Int
+           string "Int:" >> (uncurry intV) <$> read2Int,
+           string "Zero:" >> initV <$> int,
+           string "Superposed:" >> superposedIntV <$> int
           ]
 
 readStates :: ReadP (Store QState)
@@ -108,7 +113,12 @@ readOp = (,) <$> (munch1 isAlphaNum) <*> (string "=" >> choice opFormats)
   where opFormats =
           [string "Mat:" >> opFromList,
            string "FullHadamard:" >> hadamardOpFull <$> int,
-           string "BitwiseHadamard:" >> (uncurry hadamardOpAt) <$> read2Int
+           string "BitwiseHadamard:" >> (uncurry hadamardOpAt) <$> read2Int,
+           string "BitwiseNOT:" >> (uncurry pauliXAt) <$> read2Int,
+           string "BitwisePhase:" >> phaseOf <$> double,
+           string "BitwiseS" >> return phaseS,
+           string "BitwiseT" >> return phaseT,
+           string "CNOT" >> (uncurry3 cnotAt) <$> read3Int
           ]
 
 readOps :: ReadP (Store QOperator)
@@ -135,7 +145,9 @@ readCommand vecs ops spects = choice actionType
            string "InitializeTo:"
            >> (\name -> initialize (vecs Map.! name)) <$> munch1 isAlphaNum,
            string "SpectMeasure:"
-           >> (\name -> spectMeasure (spects Map.! name)) <$> munch1 isAlphaNum
+           >> (\name -> spectMeasure (spects Map.! name)) <$> munch1 isAlphaNum,
+           string "NumMeasure:"
+           >> (\name -> numberMeasure) <$> munch1 isAlphaNum
           ]
 
 readCommands :: Store QState -> Store QOperator -> Store SpectralDecom

@@ -3,6 +3,7 @@ import Parser
 import System.Environment
 import System.IO
 import System.Random
+import Control.Monad
 import Data.Complex
 import qualified Data.Vector as Vec
 
@@ -21,13 +22,14 @@ formatVec n vec = (concat $ map (truncStr (2*n+4) . show) $ enumFromTo 0 (length
 -- | Preliminary executable
 main = do
   args <- getArgs
-  if length args == 0
+  replicateM (read (args!!1)) $
+    if length args == 0
     then error "no input argument"
     else do
-    f <- openFile (args!!0) ReadMode
-    contents <- hGetContents f
-    let processed = filter (/=' ') . filter (/='\n') $ contents
-    g <- newStdGen
-    putStrLn $ show $ runInput g processed
-    hClose f
-  
+      f <- openFile (args!!0) ReadMode
+      contents <- hGetContents f
+      let processed = filter (/=' ') . filter (/='\n') $ contents
+      g <- newStdGen
+      putStrLn $ show $ runInput g processed
+      hClose f
+

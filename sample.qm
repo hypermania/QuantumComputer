@@ -2,7 +2,7 @@
 INIT = Vec:[0,0];
 E0 = Vec:[1,0];
 E1 = Vec:[0,1];
-E2 = VecInt:(1,1);
+E2 = Int:(1,1);
 }
 
 #Operators:{
@@ -17,5 +17,5 @@ P = EigenSys:[1:[[1,0]],(-1):[[0,-1]]];
 #Commands:{
 InitializeTo:E0;
 Apply:H;
-SpectMeasure:P;
+NumMeasure:P;
 }
