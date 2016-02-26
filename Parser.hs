@@ -7,10 +7,17 @@ Maintainer  : hypermania@uchicago.edu
 Stability   : experimental
 Portability : Unknown
 
-Parsing formatted input for the quantum computer
+Parsing formatted input for the quantum computer.
 -}
 
-module Parser where
+
+module Parser (
+  -- * Usage
+  -- $usage
+
+  runInput
+              )
+       where
 
 import Text.ParserCombinators.ReadP
 import Control.Monad
@@ -157,3 +164,8 @@ runInput g input = if length parsed > 0
                    else Left "No parse"
   where parsed = readP_to_S readComputation input
 
+{- $usage
+
+The computation here
+
+-}
