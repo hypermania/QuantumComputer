@@ -15,6 +15,8 @@ import System.Environment
 import System.IO
 import System.Random
 import Control.Monad
+import Control.Monad.Trans
+import Control.Monad.State
 import Data.Complex
 import qualified Data.Vector as Vec
 import Data.Maybe
@@ -38,66 +40,80 @@ formatVec n vec = (concat $ map (truncStr (2*n+4) . show) $ enumFromTo 0 (length
                          ++ (truncStr n . show . imagPart $ c) ++ "i  "
         coeffList = Vec.toList vec
 
-formatResult :: QCommand -> String
-formatResult result = case result of
-  Initialize -> "Initialize state vector.\n"
-  Unitary -> "Perform unitary transformation.\n"
-  MeasureDouble x -> "Measured: " ++ show x ++ "\n"
-  MeasureInt n -> "Measured: " ++ show n ++ "\n"
-
-formatResultQuiet :: QCommand -> String
-formatResultQuiet result = case result of
-  Initialize -> []
-  Unitary -> []
-  MeasureDouble x -> "Measured: " ++ show x ++ "\n"
-  MeasureInt n -> "Measured: " ++ show n ++ "\n"
-
 --------------------------------------
 -- Option Parsers
+
+data Flags = Flags { resultOnlyF :: Bool , cheatF :: Bool }
 
 fileName :: Parser String
 fileName = strArgument (metavar "filename" <> help "filename")
 
-resultOnly :: Parser Bool
-resultOnly = flag False True (short 'r' <> long "resultonly" <> help "print results for measurements only")
+measOnly :: Parser Bool
+measOnly = switch (short 'r' <> long "resultonly" <> help "print results for measurements only")
 
 cheat :: Parser Bool
-cheat = flag False True (short 'c' <> long "cheat" <> help "print states after each computation")
+cheat = switch (short 'c' <> long "cheat" <> help "print states after each computation")
 
-inputs :: Parser (String, Bool, Bool)
-inputs = liftA3 (,,) fileName resultOnly cheat
+inputs :: Parser (String, Flags)
+inputs = liftA2 (,) fileName (Flags <$> measOnly <*> cheat)
 
-printCMD :: [QCommand] -> [String]
-printCMD [] = []
-printCMD (cmd:xs) = case cmd of
-  Initialize -> "Initializing to vector...":printCMD xs
-  Unitary -> "Apply unitary operator...":printCMD xs
-  MeasureDouble l -> ("Measured: " ++ show l):printCMD xs
-  MeasureInt n -> ("Measured: " ++ show n):printCMD xs
-
-printResult :: [QCommand] -> [String]
-printResult (cmd:xs) = case cmd of
-  MeasureDouble l -> ("Measured: " ++ show l):printCMD xs
-  MeasureInt n -> ("Measured: " ++ show n):printCMD xs
-
+{-
 process :: Bool -> Either String [QCommand] -> String
 process _ (Left str) = "Input file invalid\n" ++ str
 process r (Right list) = join $ intersperse "\n" $
                          (if r then printResult else printCMD) list
+-}
 
-execute :: (String, Bool, Bool) -> IO ()
-execute (file, r, c) = do
+{-
+-- > runInput g input
+-- Runs the quantum computer specified by input with random generator g.
+evalInput :: StdGen -> String -> Either String [QCommand]
+evalInput g input = if length parsed == 1
+                    then evalQC g $ fst . last $ parsed
+                    else Left "No parse"
+  where parsed = readP_to_S readComputation input
+-}
+
+includeOutput :: Flags -> QComputer QCommand -> QComputer QCommand
+includeOutput flags cmd = do
+  out <- cmd
+  liftIO $ case out of
+    Initialize -> if resultOnlyF flags
+                  then return ()
+                  else putStrLn "Initializing quantum state..."
+    Unitary -> if resultOnlyF flags
+               then return ()
+               else putStrLn "Performing unitary transformation..."
+    MeasureDouble l -> putStrLn $ "Measured: " ++ show l
+    MeasureInt n -> putStrLn $ "Measured: " ++ show n
+  if cheatF flags
+    then do
+    psi <- get
+    liftIO $ putStrLn $ formatVec 4 psi
+    else
+    return ()
+  return out
+
+executeQC :: (String, Flags) -> IO ()
+executeQC (file, flag) = do
   f <- openFile file ReadMode
   contents <- hGetContents f
-  let processed = filter (/=' ') . filter (/='\n') $ contents
-  g <- newStdGen
-  putStrLn $ process r $ runInput g processed
+  let processedInput = filter (/=' ') . filter (/='\n') $ contents
+  let parsed = readP_to_S readComputation processedInput
+  if length parsed == 1
+    then do
+    g <- newStdGen
+    let qcWithIO = sequence $ map (includeOutput flag) (fst . head $ parsed)
+    a <- evalQC g qcWithIO
+    return ()
+    else do
+    putStrLn "No Parse"
   hClose f
 
 -- | Preliminary executable
-main = execParser opts >>= execute
+main = execParser opts >>= executeQC
   where opts = info inputs
                ( fullDesc <>
-                 progDesc "Quantum computer simulator" <>
+                 progDesc "Quantum computer simulator:\n Include appropriate input file." <>
                  header "Quantum")
   

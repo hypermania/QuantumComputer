@@ -14,8 +14,9 @@ Parsing formatted input for the quantum computer.
 module Parser (
   -- * Usage
   -- $usage
-  readComputation,
-  runInput
+  readP_to_S,
+  readComputation
+  --evalInput
               )
        where
 
@@ -157,7 +158,7 @@ readCommands vecs ops spects = endBy (readCommand vecs ops spects) (char ';')
 
 
 -- | Reading a complete file.
-readComputation :: ReadP (QComputer [QCommand])
+readComputation :: ReadP [QComputer QCommand]
 readComputation = do
   string "#States:"
   vecs <- (char '{' >> readStates) <* char '}'
@@ -167,16 +168,7 @@ readComputation = do
   spects <- char '{' >> readSpects <* char '}'
   string "#Commands:"
   cmds <- char '{' >> (readCommands vecs ops spects) <* char '}'
-  return $ Control.Monad.sequence cmds
-
--- |
--- > runInput g input
--- Runs the quantum computer specified by input with random generator g.
-runInput :: StdGen -> String -> Either String [QCommand]
-runInput g input = if length parsed > 0
-                   then evalQC g $ fst . last $ parsed
-                   else Left "No parse"
-  where parsed = readP_to_S readComputation input
+  return cmds
 
 {- $usage
 

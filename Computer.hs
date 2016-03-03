@@ -71,7 +71,8 @@ module Computer (
   initialize,
   applyGate,
   spectMeasure, numberMeasure,  
-  evalQC
+  evalQC,
+  runQC
 
   -- ** Using QComputer Monad
   -- $intro
@@ -345,7 +346,7 @@ qftBitNaive bits i j = identityOp (i-1) `tensorProdOp`
 
 -- | The monad representing the quantum computer.
 -- State monad is used for representing the quantum state.
-type QComputer = ExceptT String (RandT StdGen (State QState))
+type QComputer = ExceptT String (RandT StdGen (StateT QState IO))
 
 -- | A probability distribution of a
 type Distribution a = Vector (a, Double)
@@ -358,10 +359,13 @@ data QCommand = Initialize
               | MeasureInt Int
               deriving Show
 
--- | Evaluate a QComputer monad.
+-- | Evaluate/run a QComputer monad.
 -- In case of an error, an error message is returned.
-evalQC :: StdGen -> QComputer a -> Either String a
-evalQC g qc = evalState (evalRandT (runExceptT qc) g) (zeroV 0)
+evalQC :: StdGen -> QComputer a -> IO (Either String a)
+evalQC g qc = evalStateT (evalRandT (runExceptT qc) g) (zeroV 0)
+
+runQC :: StdGen -> QComputer a -> IO (Either String a, QState)
+runQC g qc = runStateT (evalRandT (runExceptT qc) g) (zeroV 0)
 
 -- | Initialize the quantum computer to the given state
 initialize :: QState -> QComputer QCommand
@@ -418,6 +422,7 @@ numberMeasure = do
   psi <- get
   let probs = Vec.zipWith (,) (Vec.enumFromN 0 (Vec.length psi)) (Vec.map ((^2) . magnitude) psi)
   result <- fromDist probs
+  put $ intV (round $ log (fromIntegral $ Vec.length psi) / log 2) result
   return $ MeasureInt result
 
 {- $intro
