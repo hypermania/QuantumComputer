@@ -85,8 +85,7 @@ spectFromList = Vec.fromList <$> between (char '[') (char ']') eigenSpaces
 ----------------------------------------
 -- Reading definitions
 
-type Name = String
-type Store a = Map.Map Name a
+type Store a = Map.Map String a
 
 read2Int :: ReadP (Int, Int)
 read2Int = char '(' >> ((,) <$> int <*> (char ',' >> int)) <* char ')'
@@ -97,40 +96,43 @@ read3Int = char '(' >> (liftM3 (,,) int (char ',' >> int) (char ',' >> int)) <* 
 uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
 uncurry3 f (a,b,c) = f a b c
 
-readState :: ReadP (Name, QState)
+stateFormats =
+  [string "Vec:" >> stateFromList,
+   string "Int:" >> (uncurry intV) <$> read2Int,
+   string "Zero:" >> initV <$> int,
+   string "Superposed:" >> superposedIntV <$> int
+  ]
+
+readState :: ReadP (String, QState)
 readState = (,) <$> (munch1 isAlphaNum) <*> (string "=" >> choice stateFormats)
-  where stateFormats =
-          [string "Vec:" >> stateFromList,
-           string "Int:" >> (uncurry intV) <$> read2Int,
-           string "Zero:" >> initV <$> int,
-           string "Superposed:" >> superposedIntV <$> int
-          ]
 
 readStates :: ReadP (Store QState)
 readStates = Map.fromList <$> endBy readState (char ';')
 
-readOp :: ReadP (Name, QOperator)
+opFormats =
+  [string "Mat:" >> opFromList,
+   string "FullHadamard:" >> hadamardOpFull <$> int,
+   string "BitwiseHadamard:" >> (uncurry hadamardOpAt) <$> read2Int,
+   string "BitwiseNOT:" >> (uncurry pauliXAt) <$> read2Int,
+   string "BitwisePhase:" >> phaseOf <$> double,
+   string "BitwiseS:" >> return phaseS,
+   string "BitwiseT:" >> return phaseT,
+   string "CNOT:" >> (uncurry3 cnotAt) <$> read3Int,
+   string "QFT:" >> (uncurry3 qftBitNaive) <$> read3Int
+  ]
+
+readOp :: ReadP (String, QOperator)
 readOp = (,) <$> (munch1 isAlphaNum) <*> (string "=" >> choice opFormats)
-  where opFormats =
-          [string "Mat:" >> opFromList,
-           string "FullHadamard:" >> hadamardOpFull <$> int,
-           string "BitwiseHadamard:" >> (uncurry hadamardOpAt) <$> read2Int,
-           string "BitwiseNOT:" >> (uncurry pauliXAt) <$> read2Int,
-           string "BitwisePhase:" >> phaseOf <$> double,
-           string "BitwiseS:" >> return phaseS,
-           string "BitwiseT:" >> return phaseT,
-           string "CNOT:" >> (uncurry3 cnotAt) <$> read3Int,
-           string "QFT:" >> (uncurry3 qftBitNaive) <$> read3Int
-          ]
 
 readOps :: ReadP (Store QOperator)
 readOps = Map.fromList <$> endBy readOp (char ';')
 
-readSpect :: ReadP (Name, SpectralDecom)
+spectFormats =
+  [string "EigenSys:" >> spectFromList
+  ]
+
+readSpect :: ReadP (String, SpectralDecom)
 readSpect = (,) <$> (munch1 isAlphaNum) <*> (string "=" >> choice spectFormats)
-  where spectFormats =
-          [string "EigenSys:" >> spectFromList
-          ]
 
 readSpects :: ReadP (Store SpectralDecom)
 readSpects = Map.fromList <$> endBy readSpect (char ';')
@@ -138,16 +140,29 @@ readSpects = Map.fromList <$> endBy readSpect (char ';')
 -------------------------------------
 -- Reading commands
 
+readStateVar :: Store QState -> ReadP (String, QState)
+readStateVar vecs = gather $
+                    choice stateFormats <++ ((vecs Map.!) <$> munch1 isAlphaNum)
+
+readOpVar :: Store QOperator -> ReadP (String, QOperator)
+readOpVar ops = gather $
+                choice opFormats <++ ((ops Map.!) <$> munch1 isAlphaNum)
+
+readSpectVar :: Store SpectralDecom -> ReadP (String, SpectralDecom)
+readSpectVar spects = gather $
+                      choice spectFormats <++ ((spects Map.!) <$> munch1 isAlphaNum)
+
+
 readCommand :: Store QState -> Store QOperator -> Store SpectralDecom
             -> ReadP (QComputer QCommand)
 readCommand vecs ops spects = choice actionType
   where actionType =
           [string "Apply:"
-           >> (\name -> applyGate (ops Map.! name)) <$> munch1 isAlphaNum,
+           >> (\(name, op) -> applyGate name op) <$> readOpVar ops,
            string "InitializeTo:"
-           >> (\name -> initialize (vecs Map.! name)) <$> munch1 isAlphaNum,
+           >> (\(name, vec) -> initialize name vec) <$> readStateVar vecs,
            string "SpectMeasure:"
-           >> (\name -> spectMeasure (spects Map.! name)) <$> munch1 isAlphaNum,
+           >> (\(name, spect) -> spectMeasure name spect) <$> readSpectVar spects,
            string "NumMeasure" >> return numberMeasure
           ]
 

@@ -353,10 +353,10 @@ type Distribution a = Vector (a, Double)
 
 -- | Various commands a quantum computer takes.
 -- For measurements, the value of measurement is also returned (in wrapped form).
-data QCommand = Initialize
-              | Unitary
-              | MeasureDouble Double
-              | MeasureInt Int
+data QCommand = Initialize String
+              | Unitary String
+              | MeasureDouble String Double
+              | MeasureInt String Int
               deriving Show
 
 -- | Evaluate/run a QComputer monad.
@@ -368,8 +368,8 @@ runQC :: StdGen -> QComputer a -> IO (Either String a, QState)
 runQC g qc = runStateT (evalRandT (runExceptT qc) g) (zeroV 0)
 
 -- | Initialize the quantum computer to the given state
-initialize :: QState -> QComputer QCommand
-initialize vec = put vec >> return Initialize
+initialize :: String ->QState -> QComputer QCommand
+initialize name vec = put vec >> return (Initialize name)
 
 checkOpSize :: QOperator -> QComputer ()
 checkOpSize op = do
@@ -379,12 +379,12 @@ checkOpSize op = do
     else throwError "Operator size do not match state vector"
 
 -- | Apply a given operator 
-applyGate :: QOperator -> QComputer QCommand
-applyGate op = do
+applyGate :: String -> QOperator -> QComputer QCommand
+applyGate name op = do
   checkOpSize op
   psi <- get
   put $ op `actOn` psi
-  return Unitary
+  return (Unitary name)
 
 -- | Given probability distribution of a, choose a random instance of a
 -- similar to implementation for fromList in Control.Monad.Random
@@ -409,12 +409,12 @@ spectDist spect = do
       ((val, onb), (^2) . magnitude . List.sum . List.map (`innerProdV` psi) $ onb)) spect
     
 -- | Quantum measurement with respect to a SpectralDecom.
-spectMeasure :: SpectralDecom -> QComputer QCommand
-spectMeasure spect = do
+spectMeasure :: String -> SpectralDecom -> QComputer QCommand
+spectMeasure name spect = do
   psi <- get
   (val, onb) <- spectDist spect >>= fromDist
   put $ normalizeV $ projectTo onb psi
-  return $ MeasureDouble val
+  return $ MeasureDouble name val
 
 -- | Quantum measurement of the number value of the quantum state.
 numberMeasure :: QComputer QCommand
@@ -423,7 +423,7 @@ numberMeasure = do
   let probs = Vec.zipWith (,) (Vec.enumFromN 0 (Vec.length psi)) (Vec.map ((^2) . magnitude) psi)
   result <- fromDist probs
   put $ intV (round $ log (fromIntegral $ Vec.length psi) / log 2) result
-  return $ MeasureInt result
+  return $ MeasureInt "Register value" result
 
 {- $intro
 

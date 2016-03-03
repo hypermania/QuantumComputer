@@ -78,20 +78,19 @@ includeOutput :: Flags -> QComputer QCommand -> QComputer QCommand
 includeOutput flags cmd = do
   out <- cmd
   liftIO $ case out of
-    Initialize -> if resultOnlyF flags
+    Initialize name -> if resultOnlyF flags
                   then return ()
-                  else putStrLn "Initializing quantum state..."
-    Unitary -> if resultOnlyF flags
+                  else putStrLn $ "Initializing state vector to " ++ name ++ "..."
+    Unitary name -> if resultOnlyF flags
                then return ()
-               else putStrLn "Performing unitary transformation..."
-    MeasureDouble l -> putStrLn $ "Measured: " ++ show l
-    MeasureInt n -> putStrLn $ "Measured: " ++ show n
+               else putStrLn $ "Unitary transformation by " ++ name ++ "..."
+    MeasureDouble name l -> putStrLn $ "Measured: " ++ name
+                            ++ " Result=" ++ show l
+    MeasureInt name n -> putStrLn $ "Measured: " ++ name
+                         ++ " Result=" ++ show n
   if cheatF flags
-    then do
-    psi <- get
-    liftIO $ putStrLn $ formatVec 4 psi
-    else
-    return ()
+    then get >>= liftIO . putStrLn . formatVec 4 
+    else return ()
   return out
 
 executeQC :: (String, Flags) -> IO ()
@@ -104,8 +103,10 @@ executeQC (file, flag) = do
     then do
     g <- newStdGen
     let qcWithIO = sequence $ map (includeOutput flag) (fst . head $ parsed)
-    a <- evalQC g qcWithIO
-    return ()
+    result <- evalQC g qcWithIO
+    case result of
+     Right _ -> return ()
+     Left err -> putStrLn err
     else do
     putStrLn "No Parse"
   hClose f
