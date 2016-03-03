@@ -64,6 +64,7 @@ executable Quantum
                      , base >=4.8 && <4.9
                      , containers >= 0.5.6.2
                      , mtl >=2.2 && <2.3
+                     , optparse-applicative >= 0.12.1.0
                      , random >= 1.1
                      , vector >=0.11 && <0.12
   

@@ -116,9 +116,10 @@ readOp = (,) <$> (munch1 isAlphaNum) <*> (string "=" >> choice opFormats)
            string "BitwiseHadamard:" >> (uncurry hadamardOpAt) <$> read2Int,
            string "BitwiseNOT:" >> (uncurry pauliXAt) <$> read2Int,
            string "BitwisePhase:" >> phaseOf <$> double,
-           string "BitwiseS" >> return phaseS,
-           string "BitwiseT" >> return phaseT,
-           string "CNOT" >> (uncurry3 cnotAt) <$> read3Int
+           string "BitwiseS:" >> return phaseS,
+           string "BitwiseT:" >> return phaseT,
+           string "CNOT:" >> (uncurry3 cnotAt) <$> read3Int,
+           string "QFT:" >> (uncurry3 qftBitNaive) <$> read3Int
           ]
 
 readOps :: ReadP (Store QOperator)
@@ -146,8 +147,7 @@ readCommand vecs ops spects = choice actionType
            >> (\name -> initialize (vecs Map.! name)) <$> munch1 isAlphaNum,
            string "SpectMeasure:"
            >> (\name -> spectMeasure (spects Map.! name)) <$> munch1 isAlphaNum,
-           string "NumMeasure:"
-           >> (\name -> numberMeasure) <$> munch1 isAlphaNum
+           string "NumMeasure" >> return numberMeasure
           ]
 
 readCommands :: Store QState -> Store QOperator -> Store SpectralDecom

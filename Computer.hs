@@ -61,10 +61,13 @@ module Computer (
   -- *** controlled operators
   controlledOpAt,
   cnotAt,
+  -- *** high level operators
+  qftNaive,
+  qftBitNaive,
   
   -- * Quantum State Monads
   QComputer,
-  QCommand,
+  QCommand (Initialize, Unitary, MeasureDouble, MeasureInt),
   initialize,
   applyGate,
   spectMeasure, numberMeasure,  
@@ -203,9 +206,11 @@ tensorProdOp a b = Vec.map (\k -> tensorProdV
 commutatorOp :: QOperator -> QOperator -> QOperator
 commutatorOp op1 op2 = (op1 `multOp` op2) `addOp` scalOp (-1) (op2 `multOp` op1)
 
+{-
 -- | Check if an operator is Hermitian
 isHermitian :: QOperator -> Bool
 isHermitian op = hConjugateOp op == op
+
 
 -- | Check if an operator if Unitary
 isUnitary :: QOperator -> Bool
@@ -216,6 +221,7 @@ isUnitary op = isSquare && isNormalized && isOrthogonal
     isOrthogonal = Vec.and . Vec.map (\c -> Vec.and . Vec.map ((==0.0) . (op!c `innerProdV`)) $ Vec.drop (c+1) op) $ Vec.enumFromTo 0 (columns-1)
     rows = Vec.length $ op!0
     columns = Vec.length op
+-}
 
 ------------------------------------------------------
 -- Common single-bit operators
@@ -306,6 +312,32 @@ controlledOpAt bits i j op
 -- perform NOT gate at j-th qubit.
 cnotAt :: Qubits -> Qubits -> Qubits -> QOperator
 cnotAt bits i j = controlledOpAt bits i j pauliX
+
+------------------------------------------------------
+-- High level operations
+
+-- | Quantum Fourier Transform (Naive implementation)
+-- Input: dimension of vector space
+qftNaive :: Int -> QOperator
+qftNaive n = (1/sqrt (fromIntegral n) :+ 0) `scalOp`
+             (Vec.map col $ Vec.enumFromTo 0 (n-1))
+  where root = mkPolar 1 (2*pi/fromIntegral n)
+        col i = Vec.map ((^i) . (root ^)) $ Vec.enumFromTo 0 (n-1)
+
+-- | Fast fourier transform (copied from Nielson)
+-- TODO
+fastqft :: Qubits -> QOperator
+fastqft bits = Vec.foldr1 multOp (Vec.map opAtBit $ Vec.enumFromTo 1 bits)
+  where opAtBit n = identityOp (n-1) `tensorProdOp`
+                    hadamardOpAt 1 1 `tensorProdOp`
+                    undefined
+        r remain i j = controlledOpAt remain j i (phaseOf (1/2^(j-i+1)) )
+
+-- | QFT with boundaries
+qftBitNaive :: Qubits -> Qubits -> Qubits -> QOperator
+qftBitNaive bits i j = identityOp (i-1) `tensorProdOp`
+                       qftNaive (2^(j-i+1)) `tensorProdOp`
+                       identityOp (bits-j)
 
 
 -- -----------------------------------------------------

@@ -1,13 +1,12 @@
 #States:{
-INIT = Vec:[0,0];
-E0 = Vec:[1,0];
-E1 = Vec:[0,1];
-E2 = Int:(1,1);
+INIT = Int:(2,1);
 }
 
 #Operators:{
 Z = Mat:[[1,0],[0,-1]];
-H = BitwiseHadamard:(1,1);
+H1 = BitwiseHadamard:(2,1);
+H2 = BitwiseHadamard:(2,2);
+Q = QFT:(2,1,2);
 }
 
 #SpectralDecoms:{
@@ -15,7 +14,8 @@ P = EigenSys:[1:[[1,0]],(-1):[[0,-1]]];
 }
 
 #Commands:{
-InitializeTo:E0;
-Apply:H;
-NumMeasure:P;
+InitializeTo:INIT;
+Apply:H1;
+Apply:H2;
+NumMeasure;
 }
