@@ -14,7 +14,7 @@ P = EigenSys:[1:[[1,0]],(-1):[[0,-1]]];
 }
 
 #Commands:{
-InitializeTo:Int:(9,0);
-Apply:QFT:(9,1,5);
+InitializeTo:Int:(13,0);
+Apply:QFT:(13,1,13);
 NumMeasure;
 }

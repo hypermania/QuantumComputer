@@ -425,6 +425,15 @@ numberMeasure = do
   put $ intV (round $ log (fromIntegral $ Vec.length psi) / log 2) result
   return $ MeasureInt "Register value" result
 
+{-
+numberMeasureAt :: Qubits -> Qubits -> QComputer QCommand
+numberMeasureAt i j = do
+  psi <- get
+  let probs = Vec.zipWith (,) (Vec.enumFromN 0 (Vec.length psi)) (Vec.map ((^2) . magnitude) psi)
+  result <- fromDist probs
+  put $ intV (round $ log (fromIntegral $ Vec.length psi) / log 2) result
+  return $ MeasureInt "Register value" result
+-}
 {- $intro
 
 > compute = do

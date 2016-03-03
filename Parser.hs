@@ -170,8 +170,6 @@ readCommands :: Store QState -> Store QOperator -> Store SpectralDecom
              -> ReadP [QComputer QCommand]
 readCommands vecs ops spects = endBy (readCommand vecs ops spects) (char ';')
 
-
-
 -- | Reading a complete file.
 readComputation :: ReadP [QComputer QCommand]
 readComputation = do

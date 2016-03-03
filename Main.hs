@@ -84,11 +84,11 @@ includeOutput flags cmd = do
     Unitary name -> if resultOnlyF flags
                then return ()
                else putStrLn $ "Unitary transformation by " ++ name ++ "..."
-    MeasureDouble name l -> putStrLn $ "Measured: " ++ name
-                            ++ " Result=" ++ show l
-    MeasureInt name n -> putStrLn $ "Measured: " ++ name
-                         ++ " Result=" ++ show n
-  if cheatF flags
+    MeasureDouble name l -> putStrLn $ "Measured " ++ name
+                            ++ ". Result=" ++ show l
+    MeasureInt name n -> putStrLn $ "Measured " ++ name
+                         ++ ". Result=" ++ show n
+  if and [cheatF flags, not $ resultOnlyF flags]
     then get >>= liftIO . putStrLn . formatVec 4 
     else return ()
   return out
