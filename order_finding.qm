@@ -1,9 +1,9 @@
 #States:{
-INIT = Int(10,0);
+INIT = Int(7,1);
 }
 
 #Operators:{
-U = MultModN(3,5,3);
+U = MultModN(2,3,2);
 }
 
 #SpectralDecoms:{
@@ -12,148 +12,50 @@ U = MultModN(3,5,3);
 #Commands:{
 InitializeTo: INIT;
 
-Apply: BitwiseHadamard(10,1);
-Apply: BitwiseHadamard(10,2);
-Apply: BitwiseHadamard(10,3);
-Apply: BitwiseHadamard(10,4);
-Apply: BitwiseHadamard(10,5);
-Apply: BitwiseHadamard(10,6);
-Apply: BitwiseHadamard(10,7);
+Apply: BitwiseHadamard(7,1);
+Apply: BitwiseHadamard(7,2);
+Apply: BitwiseHadamard(7,3);
+Apply: BitwiseHadamard(7,4);
+Apply: BitwiseHadamard(7,5);
 
-ApplyCtrl: 10,7,8,U;
+ApplyCtrl: 7,5,6,U;
 
-ApplyCtrl: 10,6,8,U;
-ApplyCtrl: 10,6,8,U;
+ApplyCtrl: 7,4,6,U;
+ApplyCtrl: 7,4,6,U;
 
-ApplyCtrl: 10,5,8,U;
-ApplyCtrl: 10,5,8,U;
-ApplyCtrl: 10,5,8,U;
-ApplyCtrl: 10,5,8,U;
+ApplyCtrl: 7,3,6,U;
+ApplyCtrl: 7,3,6,U;
+ApplyCtrl: 7,3,6,U;
+ApplyCtrl: 7,3,6,U;
 
-ApplyCtrl: 10,4,8,U;
-ApplyCtrl: 10,4,8,U;
-ApplyCtrl: 10,4,8,U;
-ApplyCtrl: 10,4,8,U;
-ApplyCtrl: 10,4,8,U;
-ApplyCtrl: 10,4,8,U;
-ApplyCtrl: 10,4,8,U;
-ApplyCtrl: 10,4,8,U;
+ApplyCtrl: 7,2,6,U;
+ApplyCtrl: 7,2,6,U;
+ApplyCtrl: 7,2,6,U;
+ApplyCtrl: 7,2,6,U;
+ApplyCtrl: 7,2,6,U;
+ApplyCtrl: 7,2,6,U;
+ApplyCtrl: 7,2,6,U;
+ApplyCtrl: 7,2,6,U;
 
-ApplyCtrl: 10,3,8,U;
-ApplyCtrl: 10,3,8,U;
-ApplyCtrl: 10,3,8,U;
-ApplyCtrl: 10,3,8,U;
-ApplyCtrl: 10,3,8,U;
-ApplyCtrl: 10,3,8,U;
-ApplyCtrl: 10,3,8,U;
-ApplyCtrl: 10,3,8,U;
-ApplyCtrl: 10,3,8,U;
-ApplyCtrl: 10,3,8,U;
-ApplyCtrl: 10,3,8,U;
-ApplyCtrl: 10,3,8,U;
-ApplyCtrl: 10,3,8,U;
-ApplyCtrl: 10,3,8,U;
-ApplyCtrl: 10,3,8,U;
-ApplyCtrl: 10,3,8,U;
 
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
-ApplyCtrl: 10,2,8,U;
+ApplyCtrl: 7,1,6,U;
+ApplyCtrl: 7,1,6,U;
+ApplyCtrl: 7,1,6,U;
+ApplyCtrl: 7,1,6,U;
+ApplyCtrl: 7,1,6,U;
+ApplyCtrl: 7,1,6,U;
+ApplyCtrl: 7,1,6,U;
+ApplyCtrl: 7,1,6,U;
+ApplyCtrl: 7,1,6,U;
+ApplyCtrl: 7,1,6,U;
+ApplyCtrl: 7,1,6,U;
+ApplyCtrl: 7,1,6,U;
+ApplyCtrl: 7,1,6,U;
+ApplyCtrl: 7,1,6,U;
+ApplyCtrl: 7,1,6,U;
+ApplyCtrl: 7,1,6,U;
 
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
-ApplyCtrl: 10,1,8,U;
 
-Apply: InverseQFT(10,1,7);
-SpectMeasure: CompBasis(10,1,7);
+Apply: InverseQFT(7,1,5);
+SpectMeasure: CompBasis(7,1,5);
 }

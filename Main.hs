@@ -62,11 +62,11 @@ includeOutput flags cmd = do
   out <- cmd
   liftIO $ case out of
     Initialize name -> if resultOnlyF flags
-                  then return ()
-                  else putStrLn $ "Initializing state vector to " ++ name ++ "..."
+                       then return ()
+                       else putStrLn $ "Initializing state vector to " ++ name ++ "..."
     Unitary name -> if resultOnlyF flags
-               then return ()
-               else putStrLn $ "Unitary transformation by " ++ name ++ "..."
+                    then return ()
+                    else putStrLn $ "Unitary transformation by " ++ name ++ "..."
     MeasureDouble name l -> putStrLn $ "Measured " ++ name
                             ++ ". Result=" ++ show l
     MeasureInt name n -> putStrLn $ "Measured " ++ name
