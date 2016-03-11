@@ -24,6 +24,7 @@ import Text.ParserCombinators.ReadP
 import Control.Monad
 import Control.Monad.State
 import Control.Monad.Random
+import Control.Monad.Reader
 import Computer
 
 import qualified Data.Vector as Vec
@@ -86,6 +87,7 @@ spectFromList = Vec.fromList <$> between (char '[') (char ']') eigenSpaces
 -- Reading definitions
 
 type Store a = Map.Map String a
+type ReadData = ReaderT (Store QState, Store QOperator, Store SpectralDecom) ReadP
 
 read2Int :: ReadP (Int, Int)
 read2Int = char '(' >> ((,) <$> int <*> (char ',' >> int)) <* char ')'
@@ -102,15 +104,16 @@ read2Name = char '(' >> ((,) <$> name <*> (char ',' >> name)) <* char ')'
 uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
 uncurry3 f (a,b,c) = f a b c
 
-stateFormats :: [ReadP QState]
-stateFormats =
-  [string "Vec" >> stateFromList,
-   string "Int" >> (uncurry intV) <$> read2Int,
-   string "Zero" >> initV <$> int,
-   string "Superposed" >> superposedIntV <$> int--,
---   string "TensorProdV" >> (uncurry tensorProdV) <$> read2Name
-  ]
+--data VecExpr = VecLit QState | VecTProd VecExpr VecExpr
 
+stateFormats :: [ReadP QState]
+stateFormats = [
+  string "Vec" >> stateFromList,
+  string "Int" >> (uncurry intV) <$> read2Int,
+  string "Zero" >> initV <$> int,
+  string "Superposed" >> superposedIntV <$> int
+  ]
+  
 readState :: ReadP (String, QState)
 readState = (,) <$> name <*> (string "=" >> choice stateFormats)
 
@@ -118,22 +121,22 @@ readStates :: ReadP (Store QState)
 readStates = Map.fromList <$> endBy readState (char ';')
 
 opFormats :: [ReadP QOperator]
-opFormats =
-  [string "Mat" >> opFromList,
-   string "FullHadamard" >> hadamardOpFull <$> int,
-   string "BitwiseHadamard" >> (uncurry hadamardOpAt) <$> read2Int,
-   string "BitwiseNOT" >> (uncurry pauliXAt) <$> read2Int,
-   string "BitwisePhase" >> phaseOf <$> double,
-   string "BitwiseS" >> return phaseS,
-   string "BitwiseT" >> return phaseT,
-   string "BitwiseSAt" >> (uncurry phaseSAt) <$> read2Int,
-   string "BitwiseTAt" >> (uncurry phaseTAt) <$> read2Int,
-   string "CNOT" >> (uncurry3 cnotAt) <$> read3Int,
-   string "ControlledT" >> (uncurry3 cTAt) <$> read3Int,
-   string "ControlledS" >> (uncurry3 cSAt) <$> read3Int,
-   string "QFT" >> (uncurry3 qftBitNaive) <$> read3Int,
-   string "InverseQFT" >> (uncurry3 iqftBitNaive) <$> read3Int,
-   string "MultModN" >> (uncurry3 multModN) <$> read3Int
+opFormats = [
+  string "Mat" >> opFromList,
+  string "FullHadamard" >> hadamardOpFull <$> int,
+  string "BitwiseHadamard" >> (uncurry hadamardOpAt) <$> read2Int,
+  string "BitwiseNOT" >> (uncurry pauliXAt) <$> read2Int,
+  string "BitwisePhase" >> phaseOf <$> double,
+  string "BitwiseS" >> return phaseS,
+  string "BitwiseT" >> return phaseT,
+  string "BitwiseSAt" >> (uncurry phaseSAt) <$> read2Int,
+  string "BitwiseTAt" >> (uncurry phaseTAt) <$> read2Int,
+  string "CNOT" >> (uncurry3 cnotAt) <$> read3Int,
+  string "ControlledT" >> (uncurry3 cTAt) <$> read3Int,
+  string "ControlledS" >> (uncurry3 cSAt) <$> read3Int,
+  string "QFT" >> (uncurry3 qftBitNaive) <$> read3Int,
+  string "InverseQFT" >> (uncurry3 iqftBitNaive) <$> read3Int,
+  string "MultModN" >> (uncurry3 multModN) <$> read3Int
   ]
 
 readOp :: ReadP (String, QOperator)
@@ -143,9 +146,9 @@ readOps :: ReadP (Store QOperator)
 readOps = Map.fromList <$> endBy readOp (char ';')
 
 spectFormats :: [ReadP SpectralDecom]
-spectFormats =
-  [string "EigenSys" >> spectFromList,
-   string "CompBasis" >> (uncurry3 compBasisSpect) <$> read3Int
+spectFormats = [
+  string "EigenSys" >> spectFromList,
+  string "CompBasis" >> (uncurry3 compBasisSpect) <$> read3Int
   ]
 
 readSpect :: ReadP (String, SpectralDecom)
@@ -169,18 +172,24 @@ readSpectVar :: Store SpectralDecom -> ReadP (String, SpectralDecom)
 readSpectVar spects = gather $
                       choice spectFormats <++ ((spects Map.!) <$> name)
 
-
 readCommand :: Store QState -> Store QOperator -> Store SpectralDecom
             -> ReadP (QComputer QCommand)
 readCommand vecs ops spects = choice actionType
-  where actionType =
-          [string "Apply:"
-           >> (\(name, op) -> applyGate name op) <$> readOpVar ops,
-           string "InitializeTo:"
-           >> (\(name, vec) -> initialize name vec) <$> readStateVar vecs,
-           string "SpectMeasure:"
-           >> (\(name, spect) -> spectMeasure name spect) <$> readSpectVar spects,
-           string "NumMeasure" >> return numberMeasure
+  where actionType = [
+          string "InitializeTo:"
+          >> (\(name, vec) -> initialize name vec) <$> readStateVar vecs,
+          string "Apply:"
+          >> (\(name, op) -> applyGate name op) <$> readOpVar ops,
+          string "ApplyOver:"
+          >> (\(bits, i, j, (name, op)) -> applyGate (name ++ "(over " ++ show i ++ "," ++ show j ++ " qubits)") (gateOn bits i j op)) <$>
+          (liftM4 (,,,) int (char ',' >> int) (char ',' >> int) (char ',' >> readOpVar ops)),
+          string "ApplyCtrl:"
+          >> (\(bits, i, j, (name, op)) ->
+               applyGate ("(controlled by " ++ show i ++ " on " ++ show j ++ ") " ++ name)
+               (controlledOpAt bits i j op)) <$> (liftM4 (,,,) int (char ',' >> int) (char ',' >> int) (char ',' >> readOpVar ops)),
+          string "SpectMeasure:"
+          >> (\(name, spect) -> spectMeasure name spect) <$> readSpectVar spects,
+          string "NumMeasure" >> return numberMeasure
           ]
 
 readCommands :: Store QState -> Store QOperator -> Store SpectralDecom

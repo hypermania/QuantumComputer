@@ -57,23 +57,6 @@ cheat = switch (short 'c' <> long "cheat" <> help "print states after each compu
 inputs :: Parser (String, Flags)
 inputs = liftA2 (,) fileName (Flags <$> measOnly <*> cheat)
 
-{-
-process :: Bool -> Either String [QCommand] -> String
-process _ (Left str) = "Input file invalid\n" ++ str
-process r (Right list) = join $ intersperse "\n" $
-                         (if r then printResult else printCMD) list
--}
-
-{-
--- > runInput g input
--- Runs the quantum computer specified by input with random generator g.
-evalInput :: StdGen -> String -> Either String [QCommand]
-evalInput g input = if length parsed == 1
-                    then evalQC g $ fst . last $ parsed
-                    else Left "No parse"
-  where parsed = readP_to_S readComputation input
--}
-
 includeOutput :: Flags -> QComputer QCommand -> QComputer QCommand
 includeOutput flags cmd = do
   out <- cmd

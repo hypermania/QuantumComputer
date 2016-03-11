@@ -3,11 +3,9 @@ INIT = Int(5,1);
 }
 
 #Operators:{
-
 }
 
 #SpectralDecoms:{
-
 }
 
 #Commands:{
@@ -18,24 +16,24 @@ Apply: BitwiseHadamard(5,2);
 Apply: BitwiseHadamard(5,3);
 Apply: BitwiseHadamard(5,4);
 
-Apply: ControlledS(5,4,5);
+ApplyCtrl: 5,4,5,BitwiseS;
 
-Apply: ControlledS(5,3,5);
-Apply: ControlledS(5,3,5);
+ApplyCtrl: 5,3,5,BitwiseS;
+ApplyCtrl: 5,3,5,BitwiseS;
 
-Apply: ControlledS(5,2,5);
-Apply: ControlledS(5,2,5);
-Apply: ControlledS(5,2,5);
-Apply: ControlledS(5,2,5);
+ApplyCtrl: 5,2,5,BitwiseS;
+ApplyCtrl: 5,2,5,BitwiseS;
+ApplyCtrl: 5,2,5,BitwiseS;
+ApplyCtrl: 5,2,5,BitwiseS;
 
-Apply: ControlledS(5,1,5);
-Apply: ControlledS(5,1,5);
-Apply: ControlledS(5,1,5);
-Apply: ControlledS(5,1,5);
-Apply: ControlledS(5,1,5);
-Apply: ControlledS(5,1,5);
-Apply: ControlledS(5,1,5);
-Apply: ControlledS(5,1,5);
+ApplyCtrl: 5,1,5,BitwiseS;
+ApplyCtrl: 5,1,5,BitwiseS;
+ApplyCtrl: 5,1,5,BitwiseS;
+ApplyCtrl: 5,1,5,BitwiseS;
+ApplyCtrl: 5,1,5,BitwiseS;
+ApplyCtrl: 5,1,5,BitwiseS;
+ApplyCtrl: 5,1,5,BitwiseS;
+ApplyCtrl: 5,1,5,BitwiseS;
 
 Apply: InverseQFT(5,1,4);
 SpectMeasure: CompBasis(5,1,4);
