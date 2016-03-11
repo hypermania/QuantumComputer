@@ -1,0 +1,42 @@
+#States:{
+INIT = Int(5,1);
+}
+
+#Operators:{
+
+}
+
+#SpectralDecoms:{
+
+}
+
+#Commands:{
+InitializeTo: INIT;
+
+Apply: BitwiseHadamard(5,1);
+Apply: BitwiseHadamard(5,2);
+Apply: BitwiseHadamard(5,3);
+Apply: BitwiseHadamard(5,4);
+
+Apply: MultModN(5,4,5);
+
+Apply: MultModN(5,3,5);
+Apply: MultModN(5,3,5);
+
+Apply: MultModN(5,2,5);
+Apply: MultModN(5,2,5);
+Apply: MultModN(5,2,5);
+Apply: MultModN(5,2,5);
+
+Apply: MultModN(5,1,5);
+Apply: MultModN(5,1,5);
+Apply: MultModN(5,1,5);
+Apply: MultModN(5,1,5);
+Apply: MultModN(5,1,5);
+Apply: MultModN(5,1,5);
+Apply: MultModN(5,1,5);
+Apply: MultModN(5,1,5);
+
+Apply: InverseQFT(5,1,4);
+SpectMeasure: CompBasis(5,1,4);
+}

@@ -107,7 +107,7 @@ stateFormats =
   [string "Vec" >> stateFromList,
    string "Int" >> (uncurry intV) <$> read2Int,
    string "Zero" >> initV <$> int,
-   string "Superposed" >> superposedIntV <$> int
+   string "Superposed" >> superposedIntV <$> int--,
 --   string "TensorProdV" >> (uncurry tensorProdV) <$> read2Name
   ]
 
@@ -132,7 +132,8 @@ opFormats =
    string "ControlledT" >> (uncurry3 cTAt) <$> read3Int,
    string "ControlledS" >> (uncurry3 cSAt) <$> read3Int,
    string "QFT" >> (uncurry3 qftBitNaive) <$> read3Int,
-   string "InverseQFT" >> (uncurry3 iqftBitNaive) <$> read3Int
+   string "InverseQFT" >> (uncurry3 iqftBitNaive) <$> read3Int,
+   string "MultModN" >> (uncurry3 multModN) <$> read3Int
   ]
 
 readOp :: ReadP (String, QOperator)

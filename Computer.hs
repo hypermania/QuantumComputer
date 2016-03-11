@@ -68,6 +68,7 @@ module Computer (
   qftBitNaive,
   iqftNaive,
   iqftBitNaive,
+  multModN,
 
   -- ** spectrums
   compBasisSpect,
@@ -360,23 +361,14 @@ fastqft bits = Vec.foldr1 multOp (Vec.map opAtBit $ Vec.enumFromTo 1 bits)
                     undefined
         r remain i j = controlledOpAt remain j i (phaseOf (1/2^(j-i+1)) )
 
+multModN :: Qubits -> Int -> Int -> QOperator
+multModN bits n x = Vec.map action $ Vec.enumFromTo 0 (2^bits-1)
+  where action y
+          | y<n = intV bits (x*y `mod` n)
+          | otherwise = intV bits y
+
 -------------------------------------------------------
 -- Standard measurements
-{-
-baseSpect :: SpectralDecom
-baseSpect = Vec.fromList [(1, [intV 0 0])]
-
-
-pauliI, pauliX, pauliY, pauliZ :: QOperator
-pauliISpect :: SpectralDecom
-pauliISpect = Vec.fromList [(0, [Vec.fromList [1,0]]),
-                            (1, [Vec.fromList [0,1]])] --Identity
--}
-{-
-pauliX = Vec.fromList [Vec.fromList [0,1], Vec.fromList [1,0]] --NOT gate
-pauliY = Vec.fromList [Vec.fromList [0,0:+1], Vec.fromList [0:+(-1),0]]
-pauliZ = Vec.fromList [Vec.fromList [1,0], Vec.fromList [0,-1]]
--}
 
 compBasisSpect :: Qubits -> Qubits -> Qubits -> SpectralDecom
 compBasisSpect bits i j = Vec.map (\(l,onb) ->
