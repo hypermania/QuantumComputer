@@ -106,9 +106,9 @@ executeQC (file, flag) = do
     result <- evalQC g qcWithIO
     case result of
      Right _ -> return ()
-     Left err -> putStrLn err
+     Left err -> error err
     else do
-    putStrLn "No Parse"
+    error "No Parse"
   hClose f
 
 -- | Preliminary executable

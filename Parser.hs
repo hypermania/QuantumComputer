@@ -93,46 +93,62 @@ read2Int = char '(' >> ((,) <$> int <*> (char ',' >> int)) <* char ')'
 read3Int :: ReadP (Int, Int, Int)
 read3Int = char '(' >> (liftM3 (,,) int (char ',' >> int) (char ',' >> int)) <* char ')'
 
+name :: ReadP String
+name = munch1 isAlphaNum
+
+read2Name :: ReadP (String, String)
+read2Name = char '(' >> ((,) <$> name <*> (char ',' >> name)) <* char ')'
+
 uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
 uncurry3 f (a,b,c) = f a b c
 
+stateFormats :: [ReadP QState]
 stateFormats =
-  [string "Vec:" >> stateFromList,
-   string "Int:" >> (uncurry intV) <$> read2Int,
-   string "Zero:" >> initV <$> int,
-   string "Superposed:" >> superposedIntV <$> int
+  [string "Vec" >> stateFromList,
+   string "Int" >> (uncurry intV) <$> read2Int,
+   string "Zero" >> initV <$> int,
+   string "Superposed" >> superposedIntV <$> int
+--   string "TensorProdV" >> (uncurry tensorProdV) <$> read2Name
   ]
 
 readState :: ReadP (String, QState)
-readState = (,) <$> (munch1 isAlphaNum) <*> (string "=" >> choice stateFormats)
+readState = (,) <$> name <*> (string "=" >> choice stateFormats)
 
 readStates :: ReadP (Store QState)
 readStates = Map.fromList <$> endBy readState (char ';')
 
+opFormats :: [ReadP QOperator]
 opFormats =
-  [string "Mat:" >> opFromList,
-   string "FullHadamard:" >> hadamardOpFull <$> int,
-   string "BitwiseHadamard:" >> (uncurry hadamardOpAt) <$> read2Int,
-   string "BitwiseNOT:" >> (uncurry pauliXAt) <$> read2Int,
-   string "BitwisePhase:" >> phaseOf <$> double,
-   string "BitwiseS:" >> return phaseS,
-   string "BitwiseT:" >> return phaseT,
-   string "CNOT:" >> (uncurry3 cnotAt) <$> read3Int,
-   string "QFT:" >> (uncurry3 qftBitNaive) <$> read3Int
+  [string "Mat" >> opFromList,
+   string "FullHadamard" >> hadamardOpFull <$> int,
+   string "BitwiseHadamard" >> (uncurry hadamardOpAt) <$> read2Int,
+   string "BitwiseNOT" >> (uncurry pauliXAt) <$> read2Int,
+   string "BitwisePhase" >> phaseOf <$> double,
+   string "BitwiseS" >> return phaseS,
+   string "BitwiseT" >> return phaseT,
+   string "BitwiseSAt" >> (uncurry phaseSAt) <$> read2Int,
+   string "BitwiseTAt" >> (uncurry phaseTAt) <$> read2Int,
+   string "CNOT" >> (uncurry3 cnotAt) <$> read3Int,
+   string "ControlledT" >> (uncurry3 cTAt) <$> read3Int,
+   string "ControlledS" >> (uncurry3 cSAt) <$> read3Int,
+   string "QFT" >> (uncurry3 qftBitNaive) <$> read3Int,
+   string "InverseQFT" >> (uncurry3 iqftBitNaive) <$> read3Int
   ]
 
 readOp :: ReadP (String, QOperator)
-readOp = (,) <$> (munch1 isAlphaNum) <*> (string "=" >> choice opFormats)
+readOp = (,) <$> name <*> (string "=" >> choice opFormats)
 
 readOps :: ReadP (Store QOperator)
 readOps = Map.fromList <$> endBy readOp (char ';')
 
+spectFormats :: [ReadP SpectralDecom]
 spectFormats =
-  [string "EigenSys:" >> spectFromList
+  [string "EigenSys" >> spectFromList,
+   string "CompBasis" >> (uncurry3 compBasisSpect) <$> read3Int
   ]
 
 readSpect :: ReadP (String, SpectralDecom)
-readSpect = (,) <$> (munch1 isAlphaNum) <*> (string "=" >> choice spectFormats)
+readSpect = (,) <$> name <*> (string "=" >> choice spectFormats)
 
 readSpects :: ReadP (Store SpectralDecom)
 readSpects = Map.fromList <$> endBy readSpect (char ';')
@@ -142,15 +158,15 @@ readSpects = Map.fromList <$> endBy readSpect (char ';')
 
 readStateVar :: Store QState -> ReadP (String, QState)
 readStateVar vecs = gather $
-                    choice stateFormats <++ ((vecs Map.!) <$> munch1 isAlphaNum)
+                    choice stateFormats <++ ((vecs Map.!) <$> name)
 
 readOpVar :: Store QOperator -> ReadP (String, QOperator)
 readOpVar ops = gather $
-                choice opFormats <++ ((ops Map.!) <$> munch1 isAlphaNum)
+                choice opFormats <++ ((ops Map.!) <$> name)
 
 readSpectVar :: Store SpectralDecom -> ReadP (String, SpectralDecom)
 readSpectVar spects = gather $
-                      choice spectFormats <++ ((spects Map.!) <$> munch1 isAlphaNum)
+                      choice spectFormats <++ ((spects Map.!) <$> name)
 
 
 readCommand :: Store QState -> Store QOperator -> Store SpectralDecom

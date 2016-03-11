@@ -61,9 +61,16 @@ module Computer (
   -- *** controlled operators
   controlledOpAt,
   cnotAt,
+  cSAt,
+  cTAt,
   -- *** high level operators
   qftNaive,
   qftBitNaive,
+  iqftNaive,
+  iqftBitNaive,
+
+  -- ** spectrums
+  compBasisSpect,
   
   -- * Quantum State Monads
   QComputer,
@@ -144,7 +151,8 @@ zeroV n = Vec.replicate (2^n) (0:+0)
 -- bits denote the number of qubits used
 -- the input should satisfy n<2^bits
 intV :: Qubits -> Int -> QState
-intV bits n = Vec.replicate n (0:+0) Vec.++ Vec.singleton (1:+0) Vec.++ Vec.replicate (2^bits-(n+1)) (0:+0)
+intV bits n = Vec.replicate n (0:+0) Vec.++ Vec.singleton (1:+0) Vec.++ Vec.replicate (2^bits-n-1) (0:+0)
+
 
 -- | The vector that represents the zero number |00..0>
 -- not to be confused with the zero vector (zeroV)
@@ -314,6 +322,12 @@ controlledOpAt bits i j op
 cnotAt :: Qubits -> Qubits -> Qubits -> QOperator
 cnotAt bits i j = controlledOpAt bits i j pauliX
 
+cTAt :: Qubits -> Qubits -> Qubits -> QOperator
+cTAt bits i j = controlledOpAt bits i j phaseT
+
+cSAt :: Qubits -> Qubits -> Qubits -> QOperator
+cSAt bits i j = controlledOpAt bits i j phaseS
+
 ------------------------------------------------------
 -- High level operations
 
@@ -325,6 +339,18 @@ qftNaive n = (1/sqrt (fromIntegral n) :+ 0) `scalOp`
   where root = mkPolar 1 (2*pi/fromIntegral n)
         col i = Vec.map ((^i) . (root ^)) $ Vec.enumFromTo 0 (n-1)
 
+iqftNaive :: Int -> QOperator
+iqftNaive = hConjugateOp . qftNaive
+
+-- | QFT with boundaries
+qftBitNaive :: Qubits -> Qubits -> Qubits -> QOperator
+qftBitNaive bits i j = identityOp (i-1) `tensorProdOp`
+                       qftNaive (2^(j-i+1)) `tensorProdOp`
+                       identityOp (bits-j)
+
+iqftBitNaive :: Qubits -> Qubits -> Qubits -> QOperator
+iqftBitNaive bits i j = hConjugateOp $ qftBitNaive bits i j
+
 -- | Fast fourier transform (copied from Nielson)
 -- TODO
 fastqft :: Qubits -> QOperator
@@ -334,12 +360,43 @@ fastqft bits = Vec.foldr1 multOp (Vec.map opAtBit $ Vec.enumFromTo 1 bits)
                     undefined
         r remain i j = controlledOpAt remain j i (phaseOf (1/2^(j-i+1)) )
 
--- | QFT with boundaries
-qftBitNaive :: Qubits -> Qubits -> Qubits -> QOperator
-qftBitNaive bits i j = identityOp (i-1) `tensorProdOp`
-                       qftNaive (2^(j-i+1)) `tensorProdOp`
-                       identityOp (bits-j)
+-------------------------------------------------------
+-- Standard measurements
+{-
+baseSpect :: SpectralDecom
+baseSpect = Vec.fromList [(1, [intV 0 0])]
 
+
+pauliI, pauliX, pauliY, pauliZ :: QOperator
+pauliISpect :: SpectralDecom
+pauliISpect = Vec.fromList [(0, [Vec.fromList [1,0]]),
+                            (1, [Vec.fromList [0,1]])] --Identity
+-}
+{-
+pauliX = Vec.fromList [Vec.fromList [0,1], Vec.fromList [1,0]] --NOT gate
+pauliY = Vec.fromList [Vec.fromList [0,0:+1], Vec.fromList [0:+(-1),0]]
+pauliZ = Vec.fromList [Vec.fromList [1,0], Vec.fromList [0,-1]]
+-}
+
+compBasisSpect :: Qubits -> Qubits -> Qubits -> SpectralDecom
+compBasisSpect bits i j = Vec.map (\(l,onb) ->
+                                    (l, Vec.toList $
+                                        identityOp (i-1) `tensorProdOp`
+                                        Vec.singleton onb `tensorProdOp`
+                                        identityOp (bits-j)
+                                        )) measPart
+  where measPart = Vec.zip (Vec.enumFromTo 0 (2^(j-i+1))) (identityOp (j-i+1))
+
+{-
+-- | Tensor product for an spectral decomposition
+tensorProdSpect :: SpectralDecom -> SpectralDecom -> SpectralDecom
+tensorProdSpect a b = Vec.map (\k -> tensorProdV
+                                  (a ! (k `div` q))
+                                  (b ! (k `mod` q)))
+                   $ Vec.enumFromTo 0 (p*q-1)
+  where p = Vec.length a
+        q = Vec.length b
+-}
 
 -- -----------------------------------------------------
 --  Quantum state monads
@@ -406,7 +463,7 @@ spectDist spect = do
   psi <- get
   return $ Vec.map
     (\(val, onb) -> 
-      ((val, onb), (^2) . magnitude . List.sum . List.map (`innerProdV` psi) $ onb)) spect
+      ((val, onb), (^2) . normV $ projectTo onb psi)) spect
     
 -- | Quantum measurement with respect to a SpectralDecom.
 spectMeasure :: String -> SpectralDecom -> QComputer QCommand
@@ -420,7 +477,7 @@ spectMeasure name spect = do
 numberMeasure :: QComputer QCommand
 numberMeasure = do
   psi <- get
-  let probs = Vec.zipWith (,) (Vec.enumFromN 0 (Vec.length psi)) (Vec.map ((^2) . magnitude) psi)
+  let probs = Vec.zipWith (,) (Vec.enumFromTo 0 (Vec.length psi - 1)) (Vec.map ((^2) . magnitude) psi)
   result <- fromDist probs
   put $ intV (round $ log (fromIntegral $ Vec.length psi) / log 2) result
   return $ MeasureInt "Register value" result
