@@ -76,10 +76,13 @@ module Computer (
   
   -- * Quantum State Monads
   QComputer,
-  QCommand (Initialize, Unitary, MeasureDouble, MeasureInt),
+  QCommand (Initialize, Unitary, MeasureDouble, MeasureInt, ClassicalData),
   initialize,
   applyGate,
-  spectMeasure, numberMeasure,  
+  spectMeasure, numberMeasure,
+  bitRecycle,
+  getScratch,
+  semiClassicalApply,
   evalQC,
   runQC
 
@@ -374,6 +377,7 @@ compBasisSpect bits i j = Vec.map (\(l,onb) ->
                                         )) measPart
   where measPart = Vec.zip (Vec.enumFromN 0 (2^(j-i+1))) (identityOp (j-i+1))
 
+
 {-
 -- | Tensor product for an spectral decomposition
 tensorProdSpect :: SpectralDecom -> SpectralDecom -> SpectralDecom
@@ -390,7 +394,7 @@ tensorProdSpect a b = Vec.map (\k -> tensorProdV
 
 -- | The monad representing the quantum computer.
 -- State monad is used for representing the quantum state.
-type QComputer = ExceptT String (RandT StdGen (StateT QState IO))
+type QComputer = ExceptT String (RandT StdGen (StateT (QState,[Int]) IO))
 
 -- | A probability distribution of a
 type Distribution a = Vector (a, Double)
@@ -401,23 +405,25 @@ data QCommand = Initialize String
               | Unitary String
               | MeasureDouble String Double
               | MeasureInt String Int
+              | ClassicalData Int
               deriving Show
 
 -- | Evaluate/run a QComputer monad.
 -- In case of an error, an error message is returned.
 evalQC :: StdGen -> QComputer a -> IO (Either String a)
-evalQC g qc = evalStateT (evalRandT (runExceptT qc) g) (zeroV 0)
+evalQC g qc = evalStateT (evalRandT (runExceptT qc) g) (zeroV 0, [])
 
-runQC :: StdGen -> QComputer a -> IO (Either String a, QState)
-runQC g qc = runStateT (evalRandT (runExceptT qc) g) (zeroV 0)
+runQC :: StdGen -> QComputer a -> IO (Either String a, (QState, [Int]))
+runQC g qc = runStateT (evalRandT (runExceptT qc) g) (zeroV 0, [])
 
 -- | Initialize the quantum computer to the given state
-initialize :: String ->QState -> QComputer QCommand
-initialize name vec = put vec >> return (Initialize name)
+-- Empty all storage
+initialize :: String -> QState-> QComputer QCommand
+initialize name vec = put (vec,[]) >> return (Initialize name)
 
 checkOpSize :: QOperator -> QComputer ()
 checkOpSize op = do
-  psi <- get
+  (psi,_) <- get
   if Vec.length op == Vec.length psi
     then return ()
     else throwError "Operator size do not match state vector"
@@ -426,8 +432,8 @@ checkOpSize op = do
 applyGate :: String -> QOperator -> QComputer QCommand
 applyGate name op = do
   checkOpSize op
-  psi <- get
-  put $ op `actOn` psi
+  (psi,r) <- get
+  put $ (op `actOn` psi, r)
   return (Unitary name)
 
 -- | Given probability distribution of a, choose a random instance of a
@@ -447,7 +453,7 @@ fromDist xs
 -- | Given spectral decomposition, give the probability distribution of (eigenvalues, eigenvectors).
 spectDist :: SpectralDecom -> QComputer (Distribution (Double, ONB))
 spectDist spect = do
-  psi <- get
+  (psi,_) <- get
   return $ Vec.map
     (\(val, onb) -> 
       ((val, onb), (^2) . normV $ projectTo onb psi)) spect
@@ -455,29 +461,43 @@ spectDist spect = do
 -- | Quantum measurement with respect to a SpectralDecom.
 spectMeasure :: String -> SpectralDecom -> QComputer QCommand
 spectMeasure name spect = do
-  psi <- get
+  (psi,r) <- get
   (val, onb) <- spectDist spect >>= fromDist
-  put $ normalizeV $ projectTo onb psi
+  put $ (normalizeV $ projectTo onb psi, r)
   return $ MeasureDouble name val
 
 -- | Quantum measurement of the number value of the quantum state.
 numberMeasure :: QComputer QCommand
 numberMeasure = do
-  psi <- get
+  (psi,r) <- get
   let probs = Vec.zipWith (,) (Vec.enumFromN 0 (Vec.length psi)) (Vec.map ((^2) . magnitude) psi)
   result <- fromDist probs
-  put $ intV (round $ log (fromIntegral $ Vec.length psi) / log 2) result
+  put $ (intV (round $ log (fromIntegral $ Vec.length psi) / log 2) result, r)
   return $ MeasureInt "Register value" result
 
-{-
-numberMeasureAt :: Qubits -> Qubits -> QComputer QCommand
-numberMeasureAt i j = do
-  psi <- get
-  let probs = Vec.zipWith (,) (Vec.enumFromN 0 (Vec.length psi)) (Vec.map ((^2) . magnitude) psi)
-  result <- fromDist probs
-  put $ intV (round $ log (fromIntegral $ Vec.length psi) / log 2) result
-  return $ MeasureInt "Register value" result
--}
+bitRecycle :: Qubits -> QComputer QCommand
+bitRecycle k = do
+  (psi,r) <- get
+  let n = round $ log (fromIntegral $ Vec.length psi) / log 2
+  MeasureDouble _ i <- spectMeasure "" $ compBasisSpect n k k
+  let result = round i
+  put $ (identityOp (k-1) `tensorProdOp` projTo0 `tensorProdOp` identityOp (n-k) `actOn` psi, result:r)
+  return $ MeasureInt ("bit " List.++ show k List.++ " (and recycled)") result
+
+getScratch :: QComputer QCommand
+getScratch = do
+  (_,r) <- get
+  return . ClassicalData . List.sum . List.zipWith (*) [2^i | i<-[0..]] $ r
+
+semiClassicalApply :: String -> QOperator -> QComputer QCommand
+semiClassicalApply name op = do
+  (_,r) <- get
+  if List.head r == 1
+    then applyGate "Identity operator" op
+    else return $ Unitary ("(semiclassical) " List.++ name)
+  return $ Unitary ("(semiclassical) " List.++ name)
+
+
 {- $intro
 
 > compute = do

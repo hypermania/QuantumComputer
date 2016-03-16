@@ -1,21 +1,66 @@
 #States:{
-INIT = Int(11,0);
+INIT = Int(5,1);
 }
 
 #Operators:{
-Z = Mat[[1,0],[0,-1]];
-H1 = BitwiseHadamard(2,1);
-H2 = BitwiseHadamard(2,2);
-Q = QFT(11,1,11);
+H = BitwiseHadamard(5,1);
+R1 = BitwiseRk(5,1);
+R2 = BitwiseRk(5,2);
+R3 = BitwiseRk(5,3);
+R4 = BitwiseRk(5,4);
+U = MultModN(4,15,2);
 }
 
 #SpectralDecoms:{
-P = EigenSys[1:[[1,0]],(-1):[[0,-1]]];
 }
 
 #Commands:{
-InitializeTo:Int(3,0);
-Apply:QFT(3,1,3);
-Apply:InverseQFT(3,1,3);
-NumMeasure;
+InitializeTo: INIT;
+Apply: H;
+
+ApplyCtrl: 5,1,2,U;
+ApplyCtrl: 5,1,2,U;
+ApplyCtrl: 5,1,2,U;
+ApplyCtrl: 5,1,2,U;
+ApplyCtrl: 5,1,2,U;
+ApplyCtrl: 5,1,2,U;
+ApplyCtrl: 5,1,2,U;
+ApplyCtrl: 5,1,2,U;
+
+Apply: H;
+
+MeasureAndRecycleBit: 1;
+
+Apply: H;
+
+ApplyCtrl: 5,1,2,U;
+ApplyCtrl: 5,1,2,U;
+ApplyCtrl: 5,1,2,U;
+ApplyCtrl: 5,1,2,U;
+
+SemiClassicalApply: R1;
+
+Apply: H;
+
+MeasureAndRecycleBit: 1;
+
+Apply: H;
+
+ApplyCtrl: 5,1,2,U;
+ApplyCtrl: 5,1,2,U;
+
+SemiClassicalApply: R2;
+
+Apply: H;
+
+MeasureAndRecycleBit: 1;
+Apply: H;
+ApplyCtrl: 5,1,2,U;
+SemiClassicalApply: R3;
+Apply: H;
+MeasureAndRecycleBit: 1;
+
+GetScratch;
+
+
 }

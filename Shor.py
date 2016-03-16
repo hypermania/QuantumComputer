@@ -14,9 +14,9 @@ N = sys.argv[1]
 #Input: a product of two primes n=pq, p!=q
 #Output: a nontrivial factor of n
 def Shor(n):
-    if n%2==0:
-        return 2
-    x = random.randrange(2,n-1)
+    #if n%2==0:
+        #return 2
+    x = random.randrange(2,n)
     if fractions.gcd(x,n)>1:
         return fractions.gcd(x,n)
     L = math.ceil(math.log2(n))
@@ -40,7 +40,7 @@ def Shor(n):
     f.close()
     cond = True
     while(cond):
-        out = subprocess.check_output(["./dist/build/Quantum/Quantum", "tempfile"]).decode("utf-8")
+        out = subprocess.check_output(["./dist/build/Quantum/Quantum","-r", "tempfile"]).decode("utf-8")
         result = fractions.Fraction(int(re.search("Result=(\d+)",out).group(1)),2**t)
         result = approx(cfrac(result))
         print(result)

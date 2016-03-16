@@ -136,7 +136,8 @@ opFormats = [
   string "ControlledS" >> (uncurry3 cSAt) <$> read3Int,
   string "QFT" >> (uncurry3 qftBitNaive) <$> read3Int,
   string "InverseQFT" >> (uncurry3 iqftBitNaive) <$> read3Int,
-  string "MultModN" >> (uncurry3 multModN) <$> read3Int
+  string "MultModN" >> (uncurry3 multModN) <$> read3Int,
+  string "BitwiseRk" >> (uncurry3 phaseAt) <$> (\(bits, k) -> (bits,1, ((*(2*pi)) . (1/) . fromIntegral . (\i -> 2^i)) $ k)) <$> read2Int
   ]
 
 readOp :: ReadP (String, QOperator)
@@ -189,7 +190,12 @@ readCommand vecs ops spects = choice actionType
                (controlledOpAt bits i j op)) <$> (liftM4 (,,,) int (char ',' >> int) (char ',' >> int) (char ',' >> readOpVar ops)),
           string "SpectMeasure:"
           >> (\(name, spect) -> spectMeasure name spect) <$> readSpectVar spects,
-          string "NumMeasure" >> return numberMeasure
+          string "NumMeasure" >> return numberMeasure,
+          string "MeasureAndRecycleBit:"
+          >> bitRecycle <$> int,
+          string "GetScratch" >> return getScratch,
+          string "SemiClassicalApply:"
+          >> (\(name, op) -> semiClassicalApply name op) <$> readOpVar ops
           ]
 
 readCommands :: Store QState -> Store QOperator -> Store SpectralDecom

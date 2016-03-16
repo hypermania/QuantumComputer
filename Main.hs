@@ -71,8 +71,9 @@ includeOutput flags cmd = do
                             ++ ". Result=" ++ show l
     MeasureInt name n -> putStrLn $ "Measured " ++ name
                          ++ ". Result=" ++ show n
+    ClassicalData n -> putStrLn $ "Classical data is " ++ show n ++ "."
   if and [cheatF flags, not $ resultOnlyF flags]
-    then get >>= liftIO . putStrLn . formatVec 4 
+    then get >>= liftIO . putStrLn . formatVec 4 . fst
     else return ()
   return out
 
